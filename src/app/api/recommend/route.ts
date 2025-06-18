@@ -5,6 +5,14 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+interface OpenAIResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+}
+
 export async function POST(request: Request) {
   try {
     if (!process.env.OPENAI_API_KEY) {
@@ -48,8 +56,10 @@ Return exactly 10 movies, one per line, no additional text or explanations.`
       max_tokens: 500,
     });
 
+    const data = await completion.json() as OpenAIResponse;
+
     return NextResponse.json({
-      recommendations: completion.choices[0].message.content
+      recommendations: data.choices[0].message.content
     });
     
   } catch (error: any) {

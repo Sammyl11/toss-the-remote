@@ -38,6 +38,31 @@ const cleanMovieTitle = (title: string) => {
     .trim();
 };
 
+interface TMDBMovie {
+  id: number;
+  title: string;
+  overview: string;
+  poster_path: string;
+  release_date: string;
+  vote_average: number;
+  credits?: {
+    cast: Array<{
+      name: string;
+      character: string;
+    }>;
+  };
+  videos?: {
+    results: Array<{
+      key: string;
+      type: string;
+    }>;
+  };
+}
+
+interface TMDBResponse {
+  results: TMDBMovie[];
+}
+
 export async function POST(request: Request) {
   try {
     const { movie } = await request.json();

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import Image from 'next/image';
 
 interface MovieDescription {
   description: string;
@@ -17,6 +18,18 @@ interface BackgroundMovie {
   poster_path: string;
   id: number;
   title: string;
+}
+
+interface Movie {
+  title: string;
+  description: string;
+  poster?: string;
+  cast?: string[];
+  streaming?: string[];
+}
+
+interface ErrorResponse {
+  error: string;
 }
 
 export default function Home() {
@@ -42,7 +55,7 @@ export default function Home() {
     fetchBackgroundMovies();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -50,12 +63,16 @@ export default function Home() {
     setShowingDetails({});
     
     try {
-      const response = await axios.post('/api/recommend', { movies });
+      const response = await axios.post<{ recommendations: string }>('/api/recommend', {
+        movies: movies
+      });
       setRecommendations(response.data.recommendations);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Failed to get recommendations. Please try again.';
-      setError(errorMessage);
-      console.error('Error details:', err);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setError(error.response?.data?.error || 'Failed to get recommendations');
+      } else {
+        setError('An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }
@@ -101,6 +118,13 @@ export default function Home() {
     return text.split('\n');
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black flex flex-col">
       <header className="bg-black py-4">
@@ -118,11 +142,15 @@ export default function Home() {
             <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 p-2">
               {backgroundMovies.map((movie) => (
                 <div key={movie.id} className="aspect-[2/3] relative group rounded-lg shadow-[0_0_20px_rgba(238,0,0,0.5)] hover:shadow-[0_0_50px_rgba(238,0,0,0.9)] transition-shadow duration-500">
-                  <img
-                    src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-                    alt=""
-                    className="w-full h-full object-cover rounded-lg transform group-hover:scale-105 transition-transform duration-500"
-                  />
+                  <div className="relative w-[120px] h-[180px]">
+                    <Image
+                      src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                      alt={movie.title}
+                      fill
+                      className="object-cover rounded-lg"
+                      sizes="120px"
+                    />
+                  </div>
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
                 </div>
               ))}
@@ -151,12 +179,7 @@ export default function Home() {
                   id="movies"
                   value={movies}
                   onChange={(e) => setMovies(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault(); // Prevent default behavior (e.g., new line)
-                      handleSubmit(e); // Call the form submission handler
-                    }
-                  }}
+                  onKeyDown={handleKeyPress}
                   placeholder="Enter your favorite movies separated by commas (e.g., The Dark Knight, Inception, Interstellar)"
                   className="w-full p-4 bg-white/5 border border-white/20 rounded-lg min-h-[120px] focus:ring-2 focus:ring-[#EE0000] focus:border-transparent transition duration-200 ease-in-out text-base text-white placeholder-gray-400 resize-none"
                   required
@@ -188,11 +211,15 @@ export default function Home() {
                             rel="noopener noreferrer"
                             className="block w-full h-full"
                           >
-                            <img
-                              src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-                              alt={movie.title}
-                              className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300 brightness-110"
-                            />
+                            <div className="relative w-[120px] h-[180px]">
+                              <Image
+                                src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                                alt={movie.title}
+                                fill
+                                className="object-cover rounded-lg"
+                                sizes="120px"
+                              />
+                            </div>
                           </a>
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                             <div className="absolute bottom-0 left-0 right-0 p-1">
@@ -257,17 +284,15 @@ export default function Home() {
                                   rel="noopener noreferrer"
                                   className="relative group flex-shrink-0"
                                 >
-                                  <img 
-                                    src={descriptions[movie].poster_path} 
-                                    alt={movie}
-                                    className="object-cover rounded-xl shadow-lg"
-                                    style={{ 
-                                      width: '180px', 
-                                      height: '300px',
-                                      border: '2px solid white',
-                                      borderRadius: '0.75rem'
-                                    }}
-                                  />
+                                  <div className="relative w-[120px] h-[180px]">
+                                    <Image
+                                      src={`https://image.tmdb.org/t/p/w500${descriptions[movie].poster_path}`}
+                                      alt={movie}
+                                      fill
+                                      className="object-cover rounded-lg"
+                                      sizes="120px"
+                                    />
+                                  </div>
                                 </a>
                               </div>
                             )}

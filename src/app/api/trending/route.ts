@@ -3,6 +3,18 @@ import { NextResponse } from 'next/server';
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
+interface TrendingMovie {
+  id: number;
+  title: string;
+  poster_path: string;
+  release_date: string;
+  vote_average: number;
+}
+
+interface TrendingResponse {
+  results: TrendingMovie[];
+}
+
 export async function GET() {
   try {
     if (!TMDB_API_KEY) {
@@ -30,7 +42,7 @@ export async function GET() {
       throw new Error(`Failed to fetch trending movies: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as TrendingResponse;
     console.log('Successfully fetched trending movies.', data.results.length);
     return NextResponse.json(data);
   } catch (error: any) {
