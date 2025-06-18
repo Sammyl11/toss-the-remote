@@ -56,10 +56,8 @@ Return exactly 10 movies, one per line, no additional text or explanations.`
       max_tokens: 500,
     });
 
-    const data = await completion.json() as OpenAIResponse;
-
     return NextResponse.json({
-      recommendations: data.choices[0].message.content
+      recommendations: completion.choices[0].message.content
     });
     
   } catch (error: any) {
