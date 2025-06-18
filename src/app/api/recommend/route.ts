@@ -5,12 +5,13 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-interface OpenAIResponse {
-  choices: Array<{
-    message: {
-      content: string;
-    };
-  }>;
+interface OpenAIError {
+  message: string;
+  type?: string;
+  response?: {
+    data?: unknown;
+    status?: number;
+  };
 }
 
 export async function POST(request: Request) {
@@ -60,27 +61,28 @@ Return exactly 10 movies, one per line, no additional text or explanations.`
       recommendations: completion.choices[0].message.content
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const openaiError = error as OpenAIError;
     console.error('Detailed error:', {
-      message: error.message,
-      type: error.type,
-      response: error.response?.data,
-      status: error.response?.status
+      message: openaiError.message,
+      type: openaiError.type,
+      response: openaiError.response?.data,
+      status: openaiError.response?.status
     });
     
     let errorMessage = 'Failed to get recommendations';
     
     if (!process.env.OPENAI_API_KEY) {
       errorMessage = 'API key not configured properly';
-    } else if (error.response?.status === 401) {
+    } else if (openaiError.response?.status === 401) {
       errorMessage = 'Invalid API key';
-    } else if (error.message) {
-      errorMessage = `Error: ${error.message}`;
+    } else if (openaiError.message) {
+      errorMessage = `Error: ${openaiError.message}`;
     }
 
     return NextResponse.json(
       { error: errorMessage },
-      { status: error.response?.status || 500 }
+      { status: openaiError.response?.status || 500 }
     );
   }
 } 

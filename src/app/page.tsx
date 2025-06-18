@@ -5,9 +5,28 @@ import axios from 'axios';
 import Image from 'next/image';
 
 interface MovieDescription {
+  title: string;
   description: string;
-  poster_path: string | null;
-  tmdb_url: string;
+  poster_path: string;
+  cast?: string[];
+  streaming?: string[];
+}
+
+interface TrendingMovie {
+  id: number;
+  title: string;
+  poster_path: string;
+  release_date: string;
+  vote_average: number;
+}
+
+interface ApiError {
+  response?: {
+    data?: {
+      error?: string;
+    };
+  };
+  message?: string;
 }
 
 interface MovieDescriptions {
@@ -103,8 +122,8 @@ export default function Home() {
           ...prev,
           [movie]: {
             description: 'Failed to load description.',
-            poster_path: null,
-            tmdb_url: ''
+            poster_path: '',
+            title: ''
           }
         }));
       } finally {
@@ -279,7 +298,7 @@ export default function Home() {
                             {descriptions[movie].poster_path && (
                               <div style={{ marginRight: '32px' }}>
                                 <a 
-                                  href={descriptions[movie].tmdb_url}
+                                  href={`https://www.themoviedb.org/movie/${descriptions[movie].title.split(' ').join('-')}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="relative group flex-shrink-0"
@@ -287,7 +306,7 @@ export default function Home() {
                                   <div className="relative w-[120px] h-[180px]">
                                     <Image
                                       src={`https://image.tmdb.org/t/p/w500${descriptions[movie].poster_path}`}
-                                      alt={movie}
+                                      alt={descriptions[movie].title}
                                       fill
                                       className="object-cover rounded-lg"
                                       sizes="120px"

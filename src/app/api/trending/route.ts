@@ -15,6 +15,15 @@ interface TrendingResponse {
   results: TrendingMovie[];
 }
 
+interface TMDBError {
+  message: string;
+  type?: string;
+  response?: {
+    data?: unknown;
+    status?: number;
+  };
+}
+
 export async function GET() {
   try {
     if (!TMDB_API_KEY) {
@@ -45,11 +54,18 @@ export async function GET() {
     const data = await response.json() as TrendingResponse;
     console.log('Successfully fetched trending movies.', data.results.length);
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Detailed error fetching trending movies:', error);
+  } catch (error: unknown) {
+    const tmdbError = error as TMDBError;
+    console.error('Error fetching trending movies:', {
+      message: tmdbError.message,
+      type: tmdbError.type,
+      response: tmdbError.response?.data,
+      status: tmdbError.response?.status
+    });
+    
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch trending movies' },
-      { status: 500 }
+      { error: 'Failed to fetch trending movies' },
+      { status: tmdbError.response?.status || 500 }
     );
   }
 } 

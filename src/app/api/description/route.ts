@@ -63,6 +63,15 @@ interface TMDBResponse {
   results: TMDBMovie[];
 }
 
+interface TMDBError {
+  message: string;
+  type?: string;
+  response?: {
+    data?: unknown;
+    status?: number;
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const { movie } = await request.json();
@@ -161,11 +170,28 @@ export async function POST(request: Request) {
       tmdb_url: `https://www.themoviedb.org/movie/${movie_data.id}`
     });
     
-  } catch (error: any) {
-    console.error('Error getting movie description:', error);
+  } catch (error: unknown) {
+    const tmdbError = error as TMDBError;
+    console.error('Detailed error:', {
+      message: tmdbError.message,
+      type: tmdbError.type,
+      response: tmdbError.response?.data,
+      status: tmdbError.response?.status
+    });
+    
+    let errorMessage = 'Failed to get movie details';
+    
+    if (!process.env.TMDB_API_KEY) {
+      errorMessage = 'API key not configured properly';
+    } else if (tmdbError.response?.status === 401) {
+      errorMessage = 'Invalid API key';
+    } else if (tmdbError.message) {
+      errorMessage = `Error: ${tmdbError.message}`;
+    }
+
     return NextResponse.json(
-      { error: 'Failed to get movie description' },
-      { status: 500 }
+      { error: errorMessage },
+      { status: tmdbError.response?.status || 500 }
     );
   }
 } 
