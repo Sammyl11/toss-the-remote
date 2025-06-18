@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M20 8C13.3726 8 8 13.3726 8 20C8 26.6274 13.3726 32 20 32C26.6274 32 32 26.6274 32 20C32 13.3726 26.6274 8 20 8Z" fill="#EE0000"/>
+  <path d="M20 12C15.5817 12 12 15.5817 12 20C12 24.4183 15.5817 28 20 28C24.4183 28 28 24.4183 28 20C28 15.5817 24.4183 12 20 12Z" fill="white"/>
+  <path d="M20 16C17.7909 16 16 17.7909 16 20C16 22.2091 17.7909 24 20 24C22.2091 24 24 22.2091 24 20C24 17.7909 22.2091 16 20 16Z" fill="#EE0000"/>
+  <path d="M40 16H36V24H40V16Z" fill="white"/>
+  <path d="M48 16H44V24H48V16Z" fill="white"/>
+  <path d="M56 16H52V24H56V16Z" fill="white"/>
+  <path d="M64 16H60V24H64V16Z" fill="white"/>
+  <path d="M72 16H68V24H72V16Z" fill="white"/>
+  <path d="M80 16H76V24H80V16Z" fill="white"/>
+  <path d="M88 16H84V24H88V16Z" fill="white"/>
+  <path d="M96 16H92V24H96V16Z" fill="white"/>
+  <path d="M104 16H100V24H104V16Z" fill="white"/>
+  <path d="M112 16H108V24H112V16Z" fill="white"/>
+</svg> 
