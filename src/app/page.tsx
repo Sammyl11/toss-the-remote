@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useState, useEffect, FormEvent, KeyboardEvent } from 'react';
+import axios, { AxiosError } from 'axios';
 import Image from 'next/image';
 
 interface MovieDescription {
@@ -10,6 +10,7 @@ interface MovieDescription {
   poster_path: string;
   cast?: string[];
   streaming?: string[];
+  trailer?: string;
 }
 
 interface TrendingMovie {
@@ -54,18 +55,12 @@ interface ErrorResponse {
 export default function Home() {
   const [movies, setMovies] = useState('');
   const [recommendations, setRecommendations] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [trendingMovies, setTrendingMovies] = useState<Array<{
-    id: number;
-    title: string;
-    poster_path: string;
-    release_date: string;
-    vote_average: number;
-  }>>([]);
+  const [trendingMovies, setTrendingMovies] = useState<TrendingMovie[]>([]);
   const [descriptions, setDescriptions] = useState<Record<string, MovieDescription>>({});
   const [loadingDescriptions, setLoadingDescriptions] = useState<Record<string, boolean>>({});
-  const [showingDetails, setShowingDetails] = useState<{[key: string]: boolean}>({});
+  const [showingDetails, setShowingDetails] = useState<Record<string, boolean>>({});
   const [backgroundMovies, setBackgroundMovies] = useState<BackgroundMovie[]>([]);
 
   useEffect(() => {
@@ -83,48 +78,37 @@ export default function Home() {
 
   const fetchTrendingMovies = async () => {
     try {
-      const response = await axios.get<{
-        results: Array<{
-          id: number;
-          title: string;
-          poster_path: string;
-          release_date: string;
-          vote_average: number;
-        }>;
-      }>('/api/trending');
+      const response = await axios.get<{ results: TrendingMovie[] }>('/api/trending');
       setTrendingMovies(response.data.results);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Error fetching trending movies:', error.response?.data?.error || 'Failed to fetch trending movies');
-      } else {
-        console.error('An unexpected error occurred while fetching trending movies');
-      }
+    } catch (err) {
+      console.error('Error fetching trending movies:', err);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    fetchTrendingMovies();
+  }, []);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoading(true);
     setError(null);
     setRecommendations(null);
 
     try {
-      const response = await axios.post<{ recommendations: string }>('/api/recommend', {
-        movies: movies
-      });
+      const response = await axios.post<{ recommendations: string }>('/api/recommend', { movies });
       setRecommendations(response.data.recommendations);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        setError(error.response?.data?.error || 'Failed to get recommendations');
-      } else {
-        setError('An unexpected error occurred');
-      }
+    } catch (err) {
+      const error = err as AxiosError<{ error: string }>;
+      const errorMessage = error.response?.data?.error || 'Failed to get recommendations. Please try again.';
+      setError(errorMessage);
+      console.error('Error details:', err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const toggleMovieDetails = async (movie: string) => {
+  const fetchDescription = async (movie: string) => {
     if (descriptions[movie]) {
       // If we already have the description, just toggle visibility
       setShowingDetails(prev => ({
@@ -135,22 +119,21 @@ export default function Home() {
       // If we don't have the description yet, fetch it and show it
       setLoadingDescriptions(prev => ({ ...prev, [movie]: true }));
       try {
-        const response = await axios.post('/api/description', { movie });
-        setDescriptions(prev => ({
-          ...prev,
-          [movie]: response.data as MovieDescription
-        }));
+        const response = await axios.post<MovieDescription>('/api/description', { movieName: movie });
+        setDescriptions(prev => ({ ...prev, [movie]: response.data }));
         setShowingDetails(prev => ({
           ...prev,
           [movie]: true
         }));
-      } catch (err: any) {
+      } catch (err) {
+        const error = err as AxiosError;
+        console.error(`Error fetching description for ${movie}:`, error);
         setDescriptions(prev => ({
           ...prev,
           [movie]: {
             description: 'Failed to load description.',
             poster_path: '',
-            title: ''
+            title: movie
           }
         }));
       } finally {
@@ -164,10 +147,10 @@ export default function Home() {
     return text.split('\n');
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+      handleSubmit(e as unknown as FormEvent<HTMLFormElement>);
     }
   };
 
@@ -233,10 +216,10 @@ export default function Home() {
               </div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={isLoading}
                 className="w-full bg-[#EE0000] text-white py-4 px-8 rounded-lg hover:bg-[#CC0000] disabled:bg-red-900/50 transition-all duration-200 ease-in-out font-semibold text-base shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none disabled:hover:shadow-none"
               >
-                {loading ? 'Finding Perfect Matches...' : 'Get Recommendations'}
+                {isLoading ? 'Finding Perfect Matches...' : 'Get Recommendations'}
               </button>
             </form>
           </div>
@@ -301,7 +284,7 @@ export default function Home() {
                       <div className="flex justify-between items-center">
                         <p className="text-lg font-medium text-white flex-grow pr-4">{movie}</p>
                         <button
-                          onClick={() => toggleMovieDetails(movie)}
+                          onClick={() => fetchDescription(movie)}
                           className={`px-6 py-2.5 rounded-lg text-sm font-semibold min-w-[120px] ${
                             loadingDescriptions[movie]
                               ? 'bg-gray-700 text-gray-300'
