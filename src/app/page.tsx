@@ -53,11 +53,18 @@ interface ErrorResponse {
 
 export default function Home() {
   const [movies, setMovies] = useState('');
-  const [recommendations, setRecommendations] = useState('');
+  const [recommendations, setRecommendations] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [descriptions, setDescriptions] = useState<MovieDescriptions>({});
-  const [loadingDescriptions, setLoadingDescriptions] = useState<{[key: string]: boolean}>({});
+  const [error, setError] = useState<string | null>(null);
+  const [trendingMovies, setTrendingMovies] = useState<Array<{
+    id: number;
+    title: string;
+    poster_path: string;
+    release_date: string;
+    vote_average: number;
+  }>>([]);
+  const [descriptions, setDescriptions] = useState<Record<string, MovieDescription>>({});
+  const [loadingDescriptions, setLoadingDescriptions] = useState<Record<string, boolean>>({});
   const [showingDetails, setShowingDetails] = useState<{[key: string]: boolean}>({});
   const [backgroundMovies, setBackgroundMovies] = useState<BackgroundMovie[]>([]);
 
@@ -74,13 +81,33 @@ export default function Home() {
     fetchBackgroundMovies();
   }, []);
 
+  const fetchTrendingMovies = async () => {
+    try {
+      const response = await axios.get<{
+        results: Array<{
+          id: number;
+          title: string;
+          poster_path: string;
+          release_date: string;
+          vote_average: number;
+        }>;
+      }>('/api/trending');
+      setTrendingMovies(response.data.results);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('Error fetching trending movies:', error.response?.data?.error || 'Failed to fetch trending movies');
+      } else {
+        console.error('An unexpected error occurred while fetching trending movies');
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setDescriptions({});
-    setShowingDetails({});
-    
+    setError(null);
+    setRecommendations(null);
+
     try {
       const response = await axios.post<{ recommendations: string }>('/api/recommend', {
         movies: movies
