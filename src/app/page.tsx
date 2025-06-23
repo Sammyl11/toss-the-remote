@@ -11,6 +11,7 @@ interface MovieDescription {
   cast?: string[];
   streaming?: string[];
   trailer?: string;
+  tmdb_url?: string;
 }
 
 interface TrendingMovie {
@@ -20,11 +21,7 @@ interface TrendingMovie {
   vote_average: number;
 }
 
-interface BackgroundMovie {
-  id: number;
-  poster_path: string;
-  title: string;
-}
+
 
 export default function Home() {
   const [movies, setMovies] = useState('');
@@ -35,7 +32,7 @@ export default function Home() {
   const [descriptions, setDescriptions] = useState<Record<string, MovieDescription>>({});
   const [loadingDescriptions, setLoadingDescriptions] = useState<Record<string, boolean>>({});
   const [showingDetails, setShowingDetails] = useState<Record<string, boolean>>({});
-  const [backgroundMovies, setBackgroundMovies] = useState<BackgroundMovie[]>([]);
+
 
   const fetchTrendingMovies = async () => {
     try {
@@ -46,18 +43,8 @@ export default function Home() {
     }
   };
 
-  const fetchBackgroundMovies = async () => {
-    try {
-      const response = await axios.get<{ results: BackgroundMovie[] }>('/api/trending');
-      setBackgroundMovies(response.data.results.sort(() => 0.5 - Math.random()));
-    } catch (err) {
-      console.error('Error fetching background movies:', err);
-    }
-  };
-
   useEffect(() => {
     fetchTrendingMovies();
-    fetchBackgroundMovies();
   }, []);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -125,7 +112,7 @@ export default function Home() {
         <div className="w-full max-w-4xl">
           <div className="bg-black/40 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full">
             <h1 className="text-4xl font-bold text-center text-white mb-2">Toss the Remote</h1>
-            <p className="text-center text-gray-300 mb-6">Enter movies you like, get recommendations you'll love.</p>
+            <p className="text-center text-gray-300 mb-6">Enter movies you like, get recommendations you&apos;ll love.</p>
             <form onSubmit={handleSubmit} className="space-y-6">
               <textarea
                 value={movies}
@@ -180,7 +167,7 @@ export default function Home() {
                            {descriptions[movie].poster_path && (
                              <div className="flex-shrink-0">
                                <a
-                                 href={(descriptions[movie] as any).tmdb_url}
+                                 href={descriptions[movie].tmdb_url || '#'}
                                  target="_blank"
                                  rel="noopener noreferrer"
                                  className="block hover:opacity-80 transition-opacity duration-200"

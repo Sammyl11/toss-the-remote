@@ -38,30 +38,9 @@ const cleanMovieTitle = (title: string) => {
     .trim();
 };
 
-interface TMDBMovie {
-  id: number;
-  title: string;
-  overview: string;
-  poster_path: string;
-  release_date: string;
-  vote_average: number;
-  credits?: {
-    cast: Array<{
-      name: string;
-      character: string;
-    }>;
-  };
-  videos?: {
-    results: Array<{
-      key: string;
-      type: string;
-    }>;
-  };
-}
 
-interface TMDBResponse {
-  results: TMDBMovie[];
-}
+
+
 
 interface TMDBError {
   message: string;
@@ -145,12 +124,12 @@ export async function POST(request: Request) {
     const movie_data = detailsResponse.data;
     
     // Format genres into a string
-    const genres = movie_data.genres.map((g: any) => g.name).join(', ');
+    const genres = movie_data.genres.map((g: { name: string }) => g.name).join(', ');
 
     // Get top cast members (up to 3)
     const topCast = movie_data.credits.cast
       .slice(0, 3)
-      .map((actor: any) => actor.name)
+      .map((actor: { name: string }) => actor.name)
       .join(', ');
 
     // Format streaming providers if available
@@ -158,7 +137,7 @@ export async function POST(request: Request) {
     if (movie_data['watch/providers']?.results?.US?.flatrate) {
       const providers = movie_data['watch/providers'].results.US.flatrate
         .slice(0, 3)
-        .map((provider: any) => provider.provider_name)
+        .map((provider: { provider_name: string }) => provider.provider_name)
         .join(', ');
       streamingInfo = `\n🎬 Movie Availability: ${providers}`;
     } else {
