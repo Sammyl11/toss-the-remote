@@ -74,8 +74,8 @@ interface TMDBError {
 
 export async function POST(request: Request) {
   try {
-    const { movie } = await request.json();
-    if (!movie) {
+    const { movieName } = await request.json();
+    if (!movieName) {
       return NextResponse.json(
         { error: 'Please provide a movie title' },
         { status: 400 }
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     }
 
     // Extract movie title and year from our format
-    const { title, year } = extractMovieInfo(movie);
+    const { title, year } = extractMovieInfo(movieName);
     
     const tmdbApiKey = process.env.TMDB_API_KEY;
     if (!tmdbApiKey) {
@@ -160,12 +160,14 @@ export async function POST(request: Request) {
         .slice(0, 3)
         .map((provider: any) => provider.provider_name)
         .join(', ');
-      streamingInfo = `\nAvailable on: ${providers}`;
+      streamingInfo = `\n🎬 Movie Availability: ${providers}`;
+    } else {
+      streamingInfo = `\n🎬 Movie Availability: Check streaming platforms`;
     }
 
     // Return comprehensive movie information with TMDB attribution
     return NextResponse.json({
-      description: `${movie_data.overview}\n\n🎭 Cast: ${topCast}\n⭐ Rating: ${movie_data.vote_average.toFixed(1)}/10\n🎬 ${genres}\n⏱️ ${Math.floor(movie_data.runtime / 60)}h ${movie_data.runtime % 60}min${streamingInfo}\n\nData provided by TMDB`,
+      description: `${movie_data.overview}\n\n🎭 Cast: ${topCast}\n⭐ Rating: ${movie_data.vote_average.toFixed(1)}/10\n🎬 ${genres}\n⏱️ ${Math.floor(movie_data.runtime / 60)}h ${movie_data.runtime % 60}min${streamingInfo}\n\nClick image for more info`,
       poster_path: movie_data.poster_path ? `https://image.tmdb.org/t/p/w500${movie_data.poster_path}` : null,
       tmdb_url: `https://www.themoviedb.org/movie/${movie_data.id}`
     });
