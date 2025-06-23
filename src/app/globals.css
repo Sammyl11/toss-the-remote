@@ -13,8 +13,8 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #ffffff;
 }
 
 @theme inline {
@@ -24,15 +24,35 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Force black background for all devices regardless of theme preference */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: #000000 !important;
+  color: #ffffff !important;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #ffffff !important;
   font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Ensure all containers maintain black background */
+#__next,
+[data-nextjs-scroll-focus-boundary] {
+  background-color: #000000 !important;
+}
+
+/* Mobile responsive styles for trending movie posters */
+@media (max-width: 768px) {
+  .trending-poster {
+    width: 200px !important;
+    height: 300px !important;
+  }
 }

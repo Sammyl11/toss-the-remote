@@ -106,7 +106,7 @@ export default function Home() {
   const recommendationList = parseRecommendations(recommendations);
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans" style={{ overflowX: 'hidden' }}>
+    <div className="min-h-screen bg-black text-white font-sans" style={{ overflowX: 'hidden', backgroundColor: '#000000' }}>
       <main className="flex flex-col items-center py-10 px-4">
         {/* Main Input and Recommendations Section */}
         <div className="w-full max-w-4xl">
@@ -225,7 +225,7 @@ export default function Home() {
                       href={`https://www.themoviedb.org/movie/${movie.id}`}
           target="_blank"
           rel="noopener noreferrer"
-                      className="relative block flex-shrink-0 rounded-[40px] overflow-hidden transition-all duration-300 shadow-xl hover:shadow-red-500/60 hover:scale-105"
+                      className="relative block flex-shrink-0 rounded-[40px] overflow-hidden transition-all duration-300 shadow-xl hover:shadow-red-500/60 hover:scale-105 trending-poster"
                       style={{ 
                         width: '350px',
                         height: '525px',
