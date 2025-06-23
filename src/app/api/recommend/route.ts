@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { movies } = await request.json();
+    const { movies, excludeMovies = [] } = await request.json();
     if (!movies) {
       return NextResponse.json(
         { error: 'Please provide a list of movies' },
@@ -43,7 +43,12 @@ export async function POST(request: Request) {
           role: "user",
           content: `Based on these movies: ${movies}
 
-Please recommend 10 NEW and DIFFERENT movies (do not include any of the input movies) that match the genre mix, ratings, and time periods of the input movies. Consider the ratio of genres in each movie and include at least one movie that blends multiple genres from the input movies.
+Please recommend 10 NEW and DIFFERENT movies (do not include any of the input movies) that match the genre mix, intended audience, ratings, and time periods of the input movies. Consider the ratio of genres in each movie and include at least one movie that blends multiple genres from the input movies.
+
+${excludeMovies.length > 0 ? `IMPORTANT: Do NOT recommend any of these movies that have already been suggested:
+${excludeMovies.join('\n')}
+
+Make sure all 10 recommendations are completely different from the above list.` : ''}
 
 Format each recommendation exactly as: Title (Year) - Director
 Example format:

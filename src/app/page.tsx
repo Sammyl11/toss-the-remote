@@ -32,6 +32,8 @@ export default function Home() {
   const [descriptions, setDescriptions] = useState<Record<string, MovieDescription>>({});
   const [loadingDescriptions, setLoadingDescriptions] = useState<Record<string, boolean>>({});
   const [showingDetails, setShowingDetails] = useState<Record<string, boolean>>({});
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [previousMovies, setPreviousMovies] = useState<string[]>([]);
 
 
   const fetchTrendingMovies = async () => {
@@ -54,10 +56,14 @@ export default function Home() {
     setRecommendations(null);
     setDescriptions({});
     setShowingDetails({});
+    setPreviousMovies([]); // Reset previous movies for new search
 
     try {
       const response = await axios.post<{ recommendations: string }>('/api/recommend', { movies });
       setRecommendations(response.data.recommendations);
+      // Track the first set of recommendations
+      const movieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
+      setPreviousMovies(movieList);
     } catch (err) {
       const error = err as AxiosError<{ error: string }>;
       const errorMessage = error.response?.data?.error || 'Failed to get recommendations. Please try again.';
@@ -65,6 +71,31 @@ export default function Home() {
       console.error('Error details:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGetMoreMovies = async () => {
+    setIsLoadingMore(true);
+    setError(null);
+    setDescriptions({});
+    setShowingDetails({});
+
+    try {
+      const response = await axios.post<{ recommendations: string }>('/api/recommend', { 
+        movies, 
+        excludeMovies: previousMovies 
+      });
+      setRecommendations(response.data.recommendations);
+      // Add new recommendations to the list of previous movies
+      const newMovieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
+      setPreviousMovies(prev => [...prev, ...newMovieList]);
+    } catch (err) {
+      const error = err as AxiosError<{ error: string }>;
+      const errorMessage = error.response?.data?.error || 'Failed to get more recommendations. Please try again.';
+      setError(errorMessage);
+      console.error('Error details:', err);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -121,6 +152,7 @@ export default function Home() {
                 placeholder="Enter your favorite movies separated by commas (e.g., The Dark Knight, Inception, Interstellar)"
                 className="w-full p-4 bg-white/5 rounded-lg min-h-[120px] transition duration-200 ease-in-out text-base text-white placeholder-gray-400 resize-none"
               />
+              
               <button
                 type="submit"
                 disabled={isLoading}
@@ -196,6 +228,43 @@ export default function Home() {
                     )}
                   </div>
                 ))}
+              </div>
+              
+              {/* Get More Movies Button */}
+              <div className="mt-8 text-center">
+                <button
+                  onClick={handleGetMoreMovies}
+                  disabled={isLoadingMore}
+                  style={{
+                    backgroundColor: isLoadingMore ? '#d1d5db' : '#ffffff',
+                    color: isLoadingMore ? '#6b7280' : '#000000',
+                    padding: '12px 24px',
+                    borderRadius: '9999px',
+                    fontWeight: '600',
+                    fontSize: '16px',
+                    border: 'none',
+                    cursor: isLoadingMore ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease-in-out',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    transform: 'translateY(0)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isLoadingMore) {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isLoadingMore) {
+                      e.currentTarget.style.backgroundColor = '#ffffff';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+                    }
+                  }}
+                >
+                  {isLoadingMore ? 'Finding More Movies...' : 'Get 10 More Movies'}
+                </button>
               </div>
             </div>
           )}
