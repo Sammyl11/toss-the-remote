@@ -218,7 +218,7 @@ export default function Home() {
 
   // Mobile Layout
   if (isMobile) {
-    return (
+  return (
       <div style={{ 
         minHeight: '100vh', 
         backgroundColor: '#000000', 
@@ -345,7 +345,7 @@ export default function Home() {
                   <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>Trending This Week</h2>
                 </div>
                 <p style={{ color: '#9ca3af', marginBottom: '24px', fontSize: '14px' }}>
-                  The most popular movies everyone's talking about
+                  The most popular movies everyone&apos;s talking about
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {trendingMovies.slice(0, 5).map((movie, index) => (
@@ -483,11 +483,11 @@ export default function Home() {
                     ) : mobilePosters[movie] ? (
                       <a
                         href={descriptions[movie]?.tmdb_url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
+            target="_blank"
+            rel="noopener noreferrer"
                         style={{ display: 'block' }}
-                      >
-                        <Image
+          >
+            <Image
                           src={mobilePosters[movie]}
                           alt={descriptions[movie]?.title || movie}
                           width={80}
@@ -597,7 +597,7 @@ export default function Home() {
                   </div>
                 </div>
               ))}
-            </div>
+        </div>
             
             <div style={{ textAlign: 'center', marginTop: '32px' }}>
               <button
@@ -689,11 +689,11 @@ export default function Home() {
                             <div className="flex-shrink-0">
                               <a
                                 href={descriptions[movie].tmdb_url || '#'}
-                                target="_blank"
-                                rel="noopener noreferrer"
+          target="_blank"
+          rel="noopener noreferrer"
                                 className="block hover:opacity-80 transition-opacity duration-200"
-                              >
-                                <Image
+        >
+          <Image
                                   src={descriptions[movie].poster_path}
                                   alt={descriptions[movie].title || movie}
                                   width={120}
@@ -779,16 +779,16 @@ export default function Home() {
                     <a
                       key={movie.id}
                       href={`https://www.themoviedb.org/movie/${movie.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+          target="_blank"
+          rel="noopener noreferrer"
                       className="relative block flex-shrink-0 rounded-[40px] overflow-hidden transition-all duration-300 shadow-xl hover:shadow-red-500/60 hover:scale-105 trending-poster"
                       style={{ 
                         width: '350px',
                         height: '525px',
                         border: '2px solid rgba(255, 255, 255, 0.7)' 
                       }}
-                    >
-                      <Image
+        >
+          <Image
                         src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
                         alt={movie.title}
                         fill
