@@ -349,7 +349,7 @@ export default function Home() {
                   The most popular movies everyone&apos;s talking about
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {trendingMovies.slice(0, 5).map((movie, index) => (
+                  {trendingMovies.slice(0, 10).map((movie, index) => (
                     <div
                       key={movie.id}
                       style={{
