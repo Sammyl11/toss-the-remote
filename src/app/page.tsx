@@ -19,6 +19,7 @@ interface TrendingMovie {
   title: string;
   poster_path: string;
   vote_average: number;
+  release_date: string;
 }
 
 export default function Home() {
@@ -355,27 +356,73 @@ export default function Home() {
                         backgroundColor: 'rgba(255, 255, 255, 0.05)',
                         padding: '16px',
                         borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px'
+                        gap: '16px',
+                        alignItems: 'flex-start',
+                        width: '100%'
                       }}
                     >
-                      <div style={{
-                        backgroundColor: '#f59e0b',
-                        color: '#000',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>
-                        #{index + 1}
+                      <div style={{ flexShrink: 0 }}>
+                        {movie.poster_path ? (
+                          <a
+                            href={`https://www.themoviedb.org/movie/${movie.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ display: 'block' }}
+                          >
+                            <Image
+                              src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                              alt={movie.title}
+                              width={80}
+                              height={120}
+                              className="object-cover"
+                              style={{
+                                borderRadius: '8px',
+                                border: '1px solid rgba(255, 255, 255, 0.2)'
+                              }}
+                            />
+                          </a>
+                        ) : (
+                          <div style={{
+                            width: '80px',
+                            height: '120px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#9ca3af',
+                            fontSize: '12px'
+                          }}>
+                            No Image
+                          </div>
+                        )}
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '4px' }}>
-                          {movie.title}
-                        </h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '14px' }}>⭐ {movie.vote_average.toFixed(1)}</span>
+                      <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <h3 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                            {movie.title}
+                          </h3>
+                          <div style={{
+                            backgroundColor: '#f59e0b',
+                            color: '#000',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}>
+                            #{index + 1}
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: '12px' }}>
+                          <div style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '4px' }}>
+                            {new Date(movie.release_date).getFullYear() || 'N/A'}
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#fbbf24' }}>
+                            ⭐ {movie.vote_average.toFixed(1)}
+                          </div>
                         </div>
                       </div>
                     </div>
