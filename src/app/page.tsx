@@ -21,8 +21,6 @@ interface TrendingMovie {
   vote_average: number;
 }
 
-
-
 export default function Home() {
   const [movies, setMovies] = useState('');
   const [recommendations, setRecommendations] = useState<string | null>(null);
@@ -32,9 +30,25 @@ export default function Home() {
   const [descriptions, setDescriptions] = useState<Record<string, MovieDescription>>({});
   const [loadingDescriptions, setLoadingDescriptions] = useState<Record<string, boolean>>({});
   const [showingDetails, setShowingDetails] = useState<Record<string, boolean>>({});
+  const [mobilePosters, setMobilePosters] = useState<Record<string, string>>({});
+  const [loadingMobilePosters, setLoadingMobilePosters] = useState<Record<string, boolean>>({});
+  const [mobileRatings, setMobileRatings] = useState<Record<string, string>>({});
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [previousMovies, setPreviousMovies] = useState<string[]>([]);
+  const [showingMobileForm, setShowingMobileForm] = useState(true);
+  const [showingMobileTrending, setShowingMobileTrending] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
 
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const fetchTrendingMovies = async () => {
     try {
@@ -56,14 +70,16 @@ export default function Home() {
     setRecommendations(null);
     setDescriptions({});
     setShowingDetails({});
-    setPreviousMovies([]); // Reset previous movies for new search
+    setPreviousMovies([]);
 
     try {
       const response = await axios.post<{ recommendations: string }>('/api/recommend', { movies });
       setRecommendations(response.data.recommendations);
-      // Track the first set of recommendations
       const movieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
       setPreviousMovies(movieList);
+      
+      // Load mobile posters sequentially
+      loadAllMobilePosters(movieList);
     } catch (err) {
       const error = err as AxiosError<{ error: string }>;
       const errorMessage = error.response?.data?.error || 'Failed to get recommendations. Please try again.';
@@ -86,9 +102,11 @@ export default function Home() {
         excludeMovies: previousMovies 
       });
       setRecommendations(response.data.recommendations);
-      // Add new recommendations to the list of previous movies
       const newMovieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
       setPreviousMovies(prev => [...prev, ...newMovieList]);
+      
+      // Load new mobile posters sequentially
+      loadAllMobilePosters(newMovieList);
     } catch (err) {
       const error = err as AxiosError<{ error: string }>;
       const errorMessage = error.response?.data?.error || 'Failed to get more recommendations. Please try again.';
@@ -122,6 +140,53 @@ export default function Home() {
     }
   };
 
+  const loadMobilePoster = async (movie: string) => {
+    if (mobilePosters[movie] || loadingMobilePosters[movie]) {
+      return;
+    }
+
+    console.log(`Starting to load poster for: ${movie}`);
+    setLoadingMobilePosters(prev => ({ ...prev, [movie]: true }));
+    
+    try {
+      const response = await axios.post<MovieDescription>('/api/description', { movieName: movie });
+      console.log(`Got poster response for ${movie}:`, response.data.poster_path);
+      
+      if (response.data.poster_path) {
+        setMobilePosters(prev => ({ ...prev, [movie]: response.data.poster_path }));
+      }
+      
+      // Store full description data
+      setDescriptions(prev => ({ ...prev, [movie]: response.data }));
+      
+      // Extract and store rating
+      const ratingMatch = response.data.description?.match(/⭐ Rating: ([\d.]+)\/10/);
+      if (ratingMatch) {
+        setMobileRatings(prev => ({ ...prev, [movie]: ratingMatch[1] }));
+      }
+    } catch (err) {
+      console.error(`Failed to load poster for ${movie}:`, err);
+    } finally {
+      setLoadingMobilePosters(prev => ({ ...prev, [movie]: false }));
+    }
+  };
+
+  const loadAllMobilePosters = async (movies: string[]) => {
+    console.log(`Loading posters for ${movies.length} movies:`, movies);
+    for (let i = 0; i < movies.length; i++) {
+      const movie = movies[i];
+      console.log(`Loading poster ${i + 1}/${movies.length}: ${movie}`);
+      await loadMobilePoster(movie);
+      // Wait 200ms between each request
+      if (i < movies.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+    console.log('Finished loading all mobile posters');
+  };
+
+
+
   const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -136,10 +201,435 @@ export default function Home() {
 
   const recommendationList = parseRecommendations(recommendations);
 
+  // Show loading state while detecting device type to prevent flashing
+  if (isMobile === null) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        backgroundColor: '#000000', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+      }}>
+        <div style={{ color: '#ffffff', fontSize: '18px' }}>Loading...</div>
+      </div>
+    );
+  }
+
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        backgroundColor: '#000000', 
+        color: '#ffffff', 
+        padding: '20px 16px',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        {!recommendations ? (
+          <>
+            <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+              <h1 style={{ fontSize: '48px', fontWeight: 'bold', color: '#ffffff', marginBottom: '16px' }}>
+                Toss the Remote
+              </h1>
+              <p style={{ color: '#9ca3af', fontSize: '18px', lineHeight: '1.6', maxWidth: '300px', margin: '0 auto' }}>
+                Discover your next favorite movie with AI-powered recommendations based on your taste
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '32px' }}>
+              <button
+                onClick={() => {
+                  setShowingMobileForm(true);
+                  setShowingMobileTrending(false);
+                }}
+                style={{
+                  flex: 1,
+                  backgroundColor: showingMobileForm ? '#8b5cf6' : 'rgba(255, 255, 255, 0.1)',
+                  color: showingMobileForm ? '#ffffff' : '#9ca3af',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Get Recommendations
+              </button>
+              <button
+                onClick={() => {
+                  setShowingMobileTrending(true);
+                  setShowingMobileForm(false);
+                }}
+                style={{
+                  flex: 1,
+                  backgroundColor: showingMobileTrending ? '#8b5cf6' : 'rgba(255, 255, 255, 0.1)',
+                  color: showingMobileTrending ? '#ffffff' : '#9ca3af',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Trending This Week
+              </button>
+            </div>
+
+            {showingMobileForm && !recommendations && (
+              <>
+                <div style={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+                  padding: '24px', 
+                  borderRadius: '16px',
+                  marginBottom: '32px',
+                  border: '1px solid rgba(255, 255, 255, 0.2)'
+                }}>
+                  <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
+                    Enter Your Favorite Movies
+                  </h2>
+                  <p style={{ color: '#9ca3af', marginBottom: '24px', fontSize: '14px' }}>
+                    List movies you love, separated by commas. Our AI will find similar films you might enjoy!
+                  </p>
+                  <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <textarea
+                      value={movies}
+                      onChange={(e) => setMovies(e.target.value)}
+                      placeholder="e.g., The Dark Knight, Inception, Pulp Fiction"
+                      style={{
+                        width: '100%',
+                        padding: '16px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        border: 'none',
+                        borderRadius: '12px',
+                        color: '#ffffff',
+                        fontSize: '16px',
+                        minHeight: '80px',
+                        resize: 'none',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      style={{
+                        backgroundColor: '#8b5cf6',
+                        color: '#ffffff',
+                        padding: '16px',
+                        borderRadius: '12px',
+                        border: 'none',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        opacity: isLoading ? 0.7 : 1
+                      }}
+                    >
+                      {isLoading ? 'Finding Perfect Matches...' : 'Get Movie Recommendations'}
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
+
+            {showingMobileTrending && (
+              <div style={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.05)', 
+                padding: '24px', 
+                borderRadius: '16px' 
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '20px' }}>📈</span>
+                  <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>Trending This Week</h2>
+                </div>
+                <p style={{ color: '#9ca3af', marginBottom: '24px', fontSize: '14px' }}>
+                  The most popular movies everyone's talking about
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {trendingMovies.slice(0, 5).map((movie, index) => (
+                    <div
+                      key={movie.id}
+                      style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        padding: '16px',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px'
+                      }}
+                    >
+                      <div style={{
+                        backgroundColor: '#f59e0b',
+                        color: '#000',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        #{index + 1}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '4px' }}>
+                          {movie.title}
+                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '14px' }}>⭐ {movie.vote_average.toFixed(1)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div>
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '36px', fontWeight: 'bold', color: '#ffffff', marginBottom: '8px' }}>
+                Toss the Remote
+              </h1>
+            </div>
+
+            {/* Mobile Input Form */}
+            <div style={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+              padding: '24px', 
+              borderRadius: '16px',
+              marginBottom: '16px',
+              border: '1px solid rgba(255, 255, 255, 0.2)'
+            }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
+                Enter Your Favorite Movies
+              </h2>
+              <p style={{ color: '#9ca3af', marginBottom: '24px', fontSize: '14px' }}>
+                List movies you love, separated by commas. Our AI will find similar films you might enjoy!
+              </p>
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <textarea
+                  value={movies}
+                  onChange={(e) => setMovies(e.target.value)}
+                  placeholder="e.g., The Dark Knight, Inception, Pulp Fiction"
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: '#ffffff',
+                    fontSize: '16px',
+                    minHeight: '80px',
+                    resize: 'none',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  style={{
+                    backgroundColor: '#8b5cf6',
+                    color: '#ffffff',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: isLoading ? 'not-allowed' : 'pointer',
+                    opacity: isLoading ? 0.7 : 1
+                  }}
+                >
+                  {isLoading ? 'Finding Perfect Matches...' : 'Get Movie Recommendations'}
+                </button>
+              </form>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '20px' }}>⭐</span>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>Recommended For You</h2>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {recommendationList.map((movie, index) => (
+                <div
+                  key={index}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    display: 'flex',
+                    gap: '16px',
+                    alignItems: 'flex-start',
+                    width: '100%'
+                  }}
+                >
+                  <div style={{ flexShrink: 0 }}>
+                    {loadingMobilePosters[movie] ? (
+                      <div style={{
+                        width: '80px',
+                        height: '120px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#9ca3af',
+                        fontSize: '12px'
+                      }}>
+                        Loading...
+                      </div>
+                    ) : mobilePosters[movie] ? (
+                      <a
+                        href={descriptions[movie]?.tmdb_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'block' }}
+                      >
+                        <Image
+                          src={mobilePosters[movie]}
+                          alt={descriptions[movie]?.title || movie}
+                          width={80}
+                          height={120}
+                          className="object-cover"
+                          style={{
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 255, 255, 0.2)'
+                          }}
+                        />
+                      </a>
+                    ) : null}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                        {movie.split(' (')[0]}
+                      </h3>
+                      <button
+                        onClick={() => {
+                          if (!descriptions[movie]) {
+                            fetchDescription(movie);
+                          } else {
+                            setShowingDetails(prev => ({ ...prev, [movie]: !prev[movie] }));
+                          }
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#9ca3af',
+                          fontSize: '20px',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          transform: showingDetails[movie] ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease'
+                        }}
+                      >
+                        ▼
+                      </button>
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '4px' }}>
+                        {movie.match(/\((\d{4})\)/) ? movie.match(/\((\d{4})\)/)![1] : ''}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#fbbf24' }}>
+                        ⭐ {mobileRatings[movie] || (loadingMobilePosters[movie] ? 'Loading...' : 'N/A')}
+                      </div>
+                    </div>
+                    
+                    {showingDetails[movie] && descriptions[movie] && (
+                      <div style={{ 
+                        marginTop: '16px', 
+                        paddingTop: '16px', 
+                        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                        width: 'calc(100% + 96px)',
+                        marginLeft: '-96px',
+                        paddingLeft: '96px'
+                      }}>
+                        <div style={{ 
+                          color: '#e5e7eb', 
+                          fontSize: '15px', 
+                          lineHeight: '1.6',
+                          marginBottom: '16px',
+                          textAlign: 'left',
+                          wordWrap: 'break-word',
+                          maxWidth: '100%',
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          {descriptions[movie].description}
+                        </div>
+                        {descriptions[movie].streaming && descriptions[movie].streaming!.length > 0 && (
+                          <div style={{ width: '100%' }}>
+                            <h4 style={{ 
+                              fontSize: '15px', 
+                              fontWeight: '600', 
+                              marginBottom: '10px',
+                              color: '#ffffff'
+                            }}>
+                              Where to Watch:
+                            </h4>
+                            <div style={{ 
+                              display: 'flex', 
+                              flexWrap: 'wrap', 
+                              gap: '8px',
+                              width: '100%'
+                            }}>
+                              {descriptions[movie].streaming!.map((service, idx) => (
+                                <span 
+                                  key={idx}
+                                  style={{
+                                    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                                    color: '#a78bfa',
+                                    padding: '6px 10px',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    fontWeight: '500'
+                                  }}
+                                >
+                                  {service}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div style={{ textAlign: 'center', marginTop: '32px' }}>
+              <button
+                onClick={handleGetMoreMovies}
+                disabled={isLoadingMore}
+                style={{
+                  backgroundColor: isLoadingMore ? '#d1d5db' : '#ffffff',
+                  color: isLoadingMore ? '#6b7280' : '#000000',
+                  padding: '12px 24px',
+                  borderRadius: '9999px',
+                  fontWeight: '600',
+                  fontSize: '16px',
+                  border: 'none',
+                  cursor: isLoadingMore ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease-in-out',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                  transform: 'translateY(0)',
+                }}
+              >
+                {isLoadingMore ? 'Finding More Movies...' : 'Get 10 More Movies'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop Layout - Original
   return (
     <div className="min-h-screen bg-black text-white font-sans" style={{ overflowX: 'hidden', backgroundColor: '#000000' }}>
       <main className="flex flex-col items-center py-10 px-4">
-        {/* Main Input and Recommendations Section */}
         <div className="w-full max-w-4xl">
           <div className="bg-black/40 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full">
             <h1 className="text-4xl font-bold text-center text-white mb-2">Toss the Remote</h1>
@@ -192,32 +682,31 @@ export default function Home() {
                       </button>
                     </div>
                     
-                    {/* Movie Details Section */}
                     {showingDetails[movie] && descriptions[movie] && (
                       <div className="mt-4 pt-4 border-t border-white/10">
-                                                 <div className="flex gap-6">
-                           {descriptions[movie].poster_path && (
-                             <div className="flex-shrink-0">
-                               <a
-                                 href={descriptions[movie].tmdb_url || '#'}
-                                 target="_blank"
-                                 rel="noopener noreferrer"
-                                 className="block hover:opacity-80 transition-opacity duration-200"
-                               >
-                                 <Image
-                                   src={descriptions[movie].poster_path}
-                                   alt={descriptions[movie].title || movie}
-                                   width={120}
-                                   height={180}
-                                   className="object-cover"
-                                   style={{
-                                     borderRadius: '12px',
-                                     border: '1px solid rgba(255, 255, 255, 0.2)'
-                                   }}
-                                 />
-                               </a>
-                             </div>
-                           )}
+                        <div className="flex gap-6">
+                          {descriptions[movie].poster_path && (
+                            <div className="flex-shrink-0">
+                              <a
+                                href={descriptions[movie].tmdb_url || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block hover:opacity-80 transition-opacity duration-200"
+                              >
+                                <Image
+                                  src={descriptions[movie].poster_path}
+                                  alt={descriptions[movie].title || movie}
+                                  width={120}
+                                  height={180}
+                                  className="object-cover"
+                                  style={{
+                                    borderRadius: '12px',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                                  }}
+                                />
+                              </a>
+                            </div>
+                          )}
                           <div className="flex-grow">
                             <div className="text-gray-300 text-sm whitespace-pre-line">
                               {descriptions[movie].description}
@@ -230,7 +719,6 @@ export default function Home() {
                 ))}
               </div>
               
-              {/* Get More Movies Button */}
               <div className="mt-8 text-center">
                 <button
                   onClick={handleGetMoreMovies}
@@ -270,7 +758,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Trending Section */}
         {!recommendations && (
           <section className="w-full max-w-7xl mt-16">
             <h2 className="text-3xl font-bold text-white mb-6 text-center">Trending This Week</h2>
@@ -292,16 +779,16 @@ export default function Home() {
                     <a
                       key={movie.id}
                       href={`https://www.themoviedb.org/movie/${movie.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="relative block flex-shrink-0 rounded-[40px] overflow-hidden transition-all duration-300 shadow-xl hover:shadow-red-500/60 hover:scale-105 trending-poster"
                       style={{ 
                         width: '350px',
                         height: '525px',
                         border: '2px solid rgba(255, 255, 255, 0.7)' 
                       }}
-        >
-          <Image
+                    >
+                      <Image
                         src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
                         alt={movie.title}
                         fill
