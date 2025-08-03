@@ -43,12 +43,12 @@ export async function POST(request: Request) {
           role: "user",
           content: `Based on these movies: ${movies}
 
-Please recommend 10 NEW and DIFFERENT movies (do not include any of the input movies) that match the genre mix, intended audience, ratings, and time periods of the input movies. Consider the ratio of genres in each movie and include at least one movie that blends multiple genres from the input movies.
+Please recommend 10 NEW and DIFFERENT movies that match the genre mix, intended audience, ratings, and time periods of the input movies. Consider the ratio of genres in each movie and include at least one movie that blends multiple genres from the input movies.
 
-${excludeMovies.length > 0 ? `IMPORTANT: Do NOT recommend any of these movies that have already been suggested:
-${excludeMovies.join('\n')}
+CRITICAL: Do NOT recommend any of these movies under any circumstances:
+${excludeMovies.length > 0 ? excludeMovies.join('\n') : 'None specified'}
 
-Make sure all 10 recommendations are completely different from the above list.` : ''}
+${excludeMovies.length > 0 ? `These movies are FORBIDDEN from your recommendations. Double-check that none of your 10 recommendations match any title from the forbidden list above, even if they have different years or directors listed.` : ''}
 
 Format each recommendation exactly as: Title (Year) - Director
 Example format:

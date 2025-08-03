@@ -74,10 +74,16 @@ export default function Home() {
     setPreviousMovies([]);
 
     try {
-      const response = await axios.post<{ recommendations: string }>('/api/recommend', { movies });
+      // Parse input movies to exclude them from recommendations
+      const inputMovies = parseInputMovies(movies);
+      
+      const response = await axios.post<{ recommendations: string }>('/api/recommend', { 
+        movies, 
+        excludeMovies: inputMovies 
+      });
       setRecommendations(response.data.recommendations);
       const movieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
-      setPreviousMovies(movieList);
+      setPreviousMovies([...inputMovies, ...movieList]);
       
       // Load mobile posters sequentially
       loadAllMobilePosters(movieList);
@@ -98,9 +104,13 @@ export default function Home() {
     setShowingDetails({});
 
     try {
+      // Parse input movies and combine with previous recommendations for exclusion
+      const inputMovies = parseInputMovies(movies);
+      const allExcludedMovies = [...new Set([...inputMovies, ...previousMovies])]; // Remove duplicates
+      
       const response = await axios.post<{ recommendations: string }>('/api/recommend', { 
         movies, 
-        excludeMovies: previousMovies 
+        excludeMovies: allExcludedMovies 
       });
       setRecommendations(response.data.recommendations);
       const newMovieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
@@ -197,7 +207,43 @@ export default function Home() {
 
   const parseRecommendations = (text: string | null) => {
     if (!text) return [];
-    return text.split('\n').filter(line => line.trim() !== '');
+    const recommendations = text.split('\n').filter(line => line.trim() !== '');
+    
+    // Remove duplicates by normalizing titles for comparison
+    const seen = new Set<string>();
+    return recommendations.filter(movie => {
+      // Extract just the title part for comparison (before year/director)
+      const titlePart = movie.split(' (')[0].toLowerCase().trim();
+      if (seen.has(titlePart)) {
+        return false;
+      }
+      seen.add(titlePart);
+      return true;
+    });
+  };
+
+  // Helper function to parse and normalize input movies
+  const parseInputMovies = (inputText: string): string[] => {
+    if (!inputText.trim()) return [];
+    
+    // Split by commas and clean up each movie
+    return inputText
+      .split(',')
+      .map(movie => movie.trim())
+      .filter(movie => movie.length > 0)
+      .map(movie => {
+        // Try to normalize format to "Title (Year)" if possible
+        // This helps with matching against recommendations
+        const normalized = movie.trim();
+        
+        // If it already has a year in parentheses, return as-is
+        if (/\(\d{4}\)/.test(normalized)) {
+          return normalized;
+        }
+        
+        // Otherwise return the cleaned title
+        return normalized;
+      });
   };
 
   const recommendationList = parseRecommendations(recommendations);
