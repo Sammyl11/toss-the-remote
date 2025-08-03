@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     }
 
     const { movies, excludeMovies = [] } = await request.json();
+    console.log('Received excludeMovies:', excludeMovies);
     if (!movies) {
       return NextResponse.json(
         { error: 'Please provide a list of movies' },
@@ -48,7 +49,7 @@ Please recommend 10 NEW and DIFFERENT movies that match the genre mix, intended 
 CRITICAL: Do NOT recommend any of these movies under any circumstances:
 ${excludeMovies.length > 0 ? excludeMovies.join('\n') : 'None specified'}
 
-${excludeMovies.length > 0 ? `These movies are FORBIDDEN from your recommendations. Double-check that none of your 10 recommendations match any title from the forbidden list above, even if they have different years or directors listed.` : ''}
+${excludeMovies.length > 0 ? `These movies are ABSOLUTELY FORBIDDEN from your recommendations. If any of your recommendations has the same TITLE as any movie in the forbidden list above, do NOT include it - even if the year, director, or format is different. For example, if "The Departed" is forbidden, do not recommend "The Departed (2006) - Martin Scorsese" or any other version of The Departed.` : ''}
 
 Format each recommendation exactly as: Title (Year) - Director
 Example format:
@@ -62,8 +63,29 @@ Return exactly 10 movies, one per line, no additional text or explanations.`
       max_tokens: 500,
     });
 
+    // Server-side filtering as backup
+    let recommendations = completion.choices[0].message.content || '';
+    
+    if (excludeMovies.length > 0) {
+      const recommendationLines = recommendations.split('\n').filter(line => line.trim() !== '');
+      const filteredRecommendations = recommendationLines.filter(recommendation => {
+        // Extract title from recommendation format "Title (Year) - Director"
+        const titleMatch = recommendation.match(/^(.+?)\s*\(/);
+        const recTitle = titleMatch ? titleMatch[1].trim().toLowerCase() : recommendation.toLowerCase();
+        
+        // Check if this recommendation matches any excluded movie
+        return !excludeMovies.some((excludedMovie: string) => {
+          const excludedTitle = excludedMovie.split('(')[0].trim().toLowerCase();
+          return recTitle === excludedTitle;
+        });
+      });
+      
+      recommendations = filteredRecommendations.join('\n');
+      console.log('Filtered recommendations:', recommendations);
+    }
+
     return NextResponse.json({
-      recommendations: completion.choices[0].message.content
+      recommendations
     });
     
   } catch (error: unknown) {

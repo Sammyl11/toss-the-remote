@@ -76,6 +76,7 @@ export default function Home() {
     try {
       // Parse input movies to exclude them from recommendations
       const inputMovies = parseInputMovies(movies);
+      console.log('Input movies for exclusion:', inputMovies);
       
       const response = await axios.post<{ recommendations: string }>('/api/recommend', { 
         movies, 
