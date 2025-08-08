@@ -28,7 +28,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [trendingMovies, setTrendingMovies] = useState<TrendingMovie[]>([]);
-  const [descriptions, setDescriptions] = useState<Record<string, MovieDescription>>({});
+    const [descriptions, setDescriptions] = useState<Record<string, MovieDescription>>({});
   const [loadingDescriptions, setLoadingDescriptions] = useState<Record<string, boolean>>({});
   const [showingDetails, setShowingDetails] = useState<Record<string, boolean>>({});
   const [mobilePosters, setMobilePosters] = useState<Record<string, string>>({});
@@ -635,7 +635,7 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    {showingDetails[movie] && descriptions[movie] && (
+                    {showingDetails[movie] && (
                       <div style={{ 
                         marginTop: '16px', 
                         paddingTop: '16px', 
@@ -644,52 +644,60 @@ export default function Home() {
                         marginLeft: '-96px',
                         paddingLeft: '96px'
                       }}>
-                        <div style={{ 
-                          color: '#e5e7eb', 
-                          fontSize: '15px', 
-                          lineHeight: '1.6',
-                          marginBottom: '16px',
-                          textAlign: 'left',
-                          wordWrap: 'break-word',
-                          maxWidth: '100%',
-                          whiteSpace: 'pre-wrap'
-                        }}>
-                          {descriptions[movie].description}
-                        </div>
-                        {descriptions[movie].streaming && descriptions[movie].streaming!.length > 0 && (
-                          <div style={{ width: '100%' }}>
-                            <h4 style={{ 
-                              fontSize: '15px', 
-                              fontWeight: '600', 
-                              marginBottom: '10px',
-                              color: '#ffffff'
-                            }}>
-                              Where to Watch:
-                            </h4>
-                            <div style={{ 
-                              display: 'flex', 
-                              flexWrap: 'wrap', 
-                              gap: '8px',
-                              width: '100%'
-                            }}>
-                              {descriptions[movie].streaming!.map((service, idx) => (
-                                <span 
-                                  key={idx}
-                                  style={{
-                                    backgroundColor: 'rgba(139, 92, 246, 0.2)',
-                                    color: '#a78bfa',
-                                    padding: '6px 10px',
-                                    borderRadius: '8px',
-                                    fontSize: '13px',
-                                    fontWeight: '500'
-                                  }}
-                                >
-                                  {service}
-                                </span>
-                              ))}
-                            </div>
+                        {loadingDescriptions[movie] ? (
+                          <div style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
+                            Loading description...
                           </div>
-                        )}
+                        ) : descriptions[movie] ? (
+                          <>
+                            <div style={{ 
+                              color: '#e5e7eb', 
+                              fontSize: '15px', 
+                              lineHeight: '1.6',
+                              marginBottom: '16px',
+                              textAlign: 'left',
+                              wordWrap: 'break-word',
+                              maxWidth: '100%',
+                              whiteSpace: 'pre-wrap'
+                            }}>
+                              {descriptions[movie].description}
+                            </div>
+                            {descriptions[movie].streaming && descriptions[movie].streaming!.length > 0 && (
+                              <div style={{ width: '100%' }}>
+                                <h4 style={{ 
+                                  fontSize: '15px', 
+                                  fontWeight: '600', 
+                                  marginBottom: '10px',
+                                  color: '#ffffff'
+                                }}>
+                                  Where to Watch:
+                                </h4>
+                                <div style={{ 
+                                  display: 'flex', 
+                                  flexWrap: 'wrap', 
+                                  gap: '8px',
+                                  width: '100%'
+                                }}>
+                                  {descriptions[movie].streaming!.map((service, index) => (
+                                    <span 
+                                      key={index}
+                                      style={{
+                                        backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                                        color: '#a78bfa',
+                                        padding: '4px 12px',
+                                        borderRadius: '20px',
+                                        fontSize: '12px',
+                                        fontWeight: '500'
+                                      }}
+                                    >
+                                      {service}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : null}
                       </div>
                     )}
                   </div>
@@ -1007,19 +1015,31 @@ export default function Home() {
                       )}
                     </div>
                     
-                    {showingDetails[movie] && descriptions[movie] && (
-                      <div style={{ 
-                        fontSize: '13px', 
-                        color: '#d1d5db',
-                        lineHeight: '1.4',
-                        marginTop: '12px',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden'
-                      }}>
-                        {descriptions[movie].description?.substring(0, 150)}...
-                      </div>
+                    {showingDetails[movie] && (
+                      loadingDescriptions[movie] ? (
+                        <div style={{ 
+                          fontSize: '13px', 
+                          color: '#9ca3af',
+                          marginTop: '12px',
+                          textAlign: 'center',
+                          padding: '12px'
+                        }}>
+                          Loading description...
+                        </div>
+                      ) : descriptions[movie] ? (
+                        <div style={{ 
+                          fontSize: '13px', 
+                          color: '#d1d5db',
+                          lineHeight: '1.4',
+                          marginTop: '12px',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {descriptions[movie].description?.substring(0, 150)}...
+                        </div>
+                      ) : null
                     )}
                   </div>
                 </div>
