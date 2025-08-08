@@ -86,7 +86,7 @@ export default function Home() {
       const movieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
       setPreviousMovies([...inputMovies, ...movieList]);
       
-      // Load mobile posters sequentially
+      // Load mobile posters sequentially (used by both mobile and desktop)
       loadAllMobilePosters(movieList);
     } catch (err) {
       const error = err as AxiosError<{ error: string }>;
@@ -117,7 +117,7 @@ export default function Home() {
       const newMovieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
       setPreviousMovies(prev => [...prev, ...newMovieList]);
       
-      // Load new mobile posters sequentially
+      // Load new mobile posters sequentially (used by both mobile and desktop)
       loadAllMobilePosters(newMovieList);
     } catch (err) {
       const error = err as AxiosError<{ error: string }>;
@@ -196,6 +196,10 @@ export default function Home() {
     }
     console.log('Finished loading all mobile posters');
   };
+
+
+
+
 
 
 
@@ -720,182 +724,312 @@ export default function Home() {
     );
   }
 
-  // Desktop Layout - Original
+  // Desktop Layout - Redesigned
   return (
-    <div className="min-h-screen bg-black text-white font-sans" style={{ overflowX: 'hidden', backgroundColor: '#000000' }}>
-      <main className="flex flex-col items-center py-10 px-4">
-        <div className="w-full max-w-4xl">
-          <div className="bg-black/40 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full">
-            <h1 className="text-4xl font-bold text-center text-white mb-2">Toss the Remote</h1>
-            <p className="text-center text-gray-300 mb-6">Enter movies you like, get recommendations you&apos;ll love.</p>
-            <form onSubmit={handleSubmit} className="space-y-6">
+    <div style={{ 
+      minHeight: '100vh', 
+      backgroundColor: '#000000', 
+      color: '#ffffff', 
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      backgroundImage: 'radial-gradient(ellipse at center, rgba(139, 92, 246, 0.1) 0%, rgba(0, 0, 0, 1) 70%)',
+      padding: '40px 20px'
+    }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+                     <h1 style={{ 
+             fontSize: '72px', 
+             fontWeight: 'bold', 
+             background: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 50%, #ffffff 100%)',
+             WebkitBackgroundClip: 'text',
+             WebkitTextFillColor: 'transparent',
+             backgroundClip: 'text',
+             marginBottom: '16px',
+             textShadow: '0 0 30px rgba(139, 92, 246, 0.4)'
+           }}>
+             Toss the Remote
+           </h1>
+          <p style={{ 
+            fontSize: '20px', 
+            color: '#ffffff', 
+            fontWeight: '500',
+            maxWidth: '600px',
+            margin: '0 auto'
+          }}>
+            Input movies you like, receive recommendations everyone can enjoy!
+          </p>
+        </div>
+
+        {/* Search Input */}
+        <div style={{ 
+          maxWidth: '800px', 
+          margin: '0 auto 60px auto',
+          position: 'relative',
+          display: 'flex',
+          justifyContent: 'center'
+        }}>
+          <form onSubmit={handleSubmit} style={{ position: 'relative', width: '100%' }}>
+            <div style={{ position: 'relative', marginBottom: '24px' }}>
+              <div style={{
+                position: 'absolute',
+                left: '20px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#9ca3af',
+                fontSize: '24px',
+                zIndex: 1
+              }}>
+                🔍
+              </div>
               <textarea
                 value={movies}
                 onChange={(e) => setMovies(e.target.value)}
                 onKeyDown={handleKeyPress}
-                placeholder="Enter your favorite movies separated by commas (e.g., The Dark Knight, Inception, Interstellar)"
-                className="w-full p-4 bg-white/5 rounded-lg min-h-[120px] transition duration-200 ease-in-out text-base text-white placeholder-gray-400 resize-none"
+                placeholder="Input movies separated by commas ex. Dune 2, Midsommar, Whiplash"
+                data-gramm="false"
+                data-gramm_editor="false"
+                data-enable-grammarly="false"
+                spellCheck="false"
+                style={{
+                  width: '100%',
+                  padding: '24px 24px 24px 60px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  border: 'none',
+                  borderRadius: '50px',
+                  color: '#000000',
+                  fontSize: '18px',
+                  fontWeight: '500',
+                  minHeight: '70px',
+                  resize: 'none',
+                  outline: 'none',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+                  transition: 'all 0.3s ease',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                onFocus={(e) => {
+                  e.target.style.boxShadow = '0 15px 35px rgba(139, 92, 246, 0.4)';
+                  e.target.style.transform = 'translateY(-2px)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.3)';
+                  e.target.style.transform = 'translateY(0)';
+                }}
               />
-              
+            </div>
+            
+            <div style={{ textAlign: 'center' }}>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-[#EE0000] text-white py-4 px-8 rounded-lg hover:bg-[#CC0000] disabled:bg-red-900/50 transition-all duration-200 ease-in-out font-semibold text-base shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none disabled:hover:shadow-none"
+                style={{
+                  backgroundColor: '#8b5cf6',
+                  color: '#ffffff',
+                  padding: '16px 48px',
+                  borderRadius: '50px',
+                  border: 'none',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  opacity: isLoading ? 0.7 : 1,
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 8px 25px rgba(139, 92, 246, 0.4)',
+                  minWidth: '200px'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isLoading) {
+                    e.currentTarget.style.backgroundColor = '#7c3aed';
+                    e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 12px 35px rgba(139, 92, 246, 0.5)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isLoading) {
+                    e.currentTarget.style.backgroundColor = '#8b5cf6';
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(139, 92, 246, 0.4)';
+                  }
+                }}
               >
-                {isLoading ? 'Finding Perfect Matches...' : 'Get Recommendations'}
+                {isLoading ? 'Finding Movies...' : 'Get Movies'}
               </button>
-            </form>
+            </div>
+          </form>
+        </div>
+
+        {error && (
+          <div style={{ 
+            maxWidth: '800px', 
+            margin: '0 auto 40px auto',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: '#fca5a5',
+            padding: '16px 24px',
+            borderRadius: '12px',
+            textAlign: 'center'
+          }}>
+            {error}
           </div>
+        )}
 
-          {error && <div className="mt-6 text-red-400 bg-red-900/50 p-4 rounded-lg">{error}</div>}
+        {/* Recommendations Section */}
+        {recommendationList.length > 0 && (
+          <div>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              marginBottom: '40px',
+              maxWidth: '1400px',
+              margin: '0 auto 40px auto'
+            }}>
+              <h2 style={{ 
+                fontSize: '32px', 
+                fontWeight: 'bold', 
+                color: '#ffffff',
+                margin: 0
+              }}>
+                Recommendations
+              </h2>
+              <button
+                onClick={handleGetMoreMovies}
+                disabled={isLoadingMore}
+                style={{
+                  color: isLoadingMore ? '#9ca3af' : '#8b5cf6',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  background: 'none',
+                  border: 'none',
+                  cursor: isLoadingMore ? 'not-allowed' : 'pointer',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                {isLoadingMore ? 'Loading more...' : 'View more →'}
+              </button>
+            </div>
 
-          {recommendationList.length > 0 && (
-            <div className="mt-8 w-full">
-              <h2 className="text-3xl font-bold text-center mb-6">Your Recommendations</h2>
-              <div className="space-y-4">
-                {recommendationList.map((movie, index) => (
-                  <div key={index} className="bg-white/5 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <p className="text-lg font-medium text-white flex-grow pr-4">{movie}</p>
-                      <button
-                        onClick={() => fetchDescription(movie)}
-                        className={`px-6 py-2.5 rounded-lg text-sm font-semibold min-w-[120px] ${
-                          loadingDescriptions[movie]
-                            ? 'bg-gray-600 animate-pulse'
-                            : showingDetails[movie]
-                            ? 'bg-gray-500 hover:bg-gray-400'
-                            : 'bg-red-600 hover:bg-red-500'
-                        } transition-all duration-200`}
-                        disabled={loadingDescriptions[movie]}
-                      >
-                        {loadingDescriptions[movie]
-                          ? 'Loading...'
-                          : showingDetails[movie]
-                          ? 'Hide Details'
-                          : 'Get Details'}
-                      </button>
-                    </div>
-                    
-                    {showingDetails[movie] && descriptions[movie] && (
-                      <div className="mt-4 pt-4 border-t border-white/10">
-                        <div className="flex gap-6">
-                          {descriptions[movie].poster_path && (
-                            <div className="flex-shrink-0">
-                              <a
-                                href={descriptions[movie].tmdb_url || '#'}
-          target="_blank"
-          rel="noopener noreferrer"
-                                className="block hover:opacity-80 transition-opacity duration-200"
-        >
-          <Image
-                                  src={descriptions[movie].poster_path}
-                                  alt={descriptions[movie].title || movie}
-                                  width={120}
-                                  height={180}
-                                  className="object-cover"
-                                  style={{
-                                    borderRadius: '12px',
-                                    border: '1px solid rgba(255, 255, 255, 0.2)'
-                                  }}
-                                />
-                              </a>
-                            </div>
-                          )}
-                          <div className="flex-grow">
-                            <div className="text-gray-300 text-sm whitespace-pre-line">
-                              {descriptions[movie].description}
-                            </div>
-                          </div>
-                        </div>
+            {/* Movie Cards Grid */}
+            <div style={{ 
+              display: 'flex',
+              gap: '20px',
+              marginBottom: '60px',
+              justifyContent: 'center',
+              maxWidth: '2000px',
+              margin: '0 auto 60px auto'
+            }}>
+              {recommendationList.slice(0, 7).map((movie, index) => (
+                <div
+                  key={index}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    position: 'relative',
+                    width: '180px',
+                    flexShrink: 0
+                  }}
+                  onClick={() => fetchDescription(movie)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-8px)';
+                    e.currentTarget.style.boxShadow = '0 20px 40px rgba(139, 92, 246, 0.2)';
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                  }}
+                >
+                  {/* Movie Poster */}
+                  <div style={{ 
+                    width: '100%', 
+                    height: '270px', 
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}>
+                    {loadingMobilePosters[movie] ? (
+                      <div style={{ color: '#9ca3af', fontSize: '14px' }}>Loading...</div>
+                    ) : mobilePosters[movie] ? (
+                      <Image
+                        src={mobilePosters[movie]}
+                        alt={movie.split(' (')[0]}
+                        fill
+                        style={{ 
+                          borderRadius: '0',
+                          objectFit: 'cover',
+                          objectPosition: 'center top'
+                        }}
+                      />
+                    ) : (
+                      <div style={{ 
+                        color: '#9ca3af', 
+                        fontSize: '14px',
+                        textAlign: 'center',
+                        padding: '20px'
+                      }}>
+                        {movie.split(' (')[0]}
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-              
-              <div className="mt-8 text-center">
-                <button
-                  onClick={handleGetMoreMovies}
-                  disabled={isLoadingMore}
-                  style={{
-                    backgroundColor: isLoadingMore ? '#d1d5db' : '#ffffff',
-                    color: isLoadingMore ? '#6b7280' : '#000000',
-                    padding: '12px 24px',
-                    borderRadius: '9999px',
-                    fontWeight: '600',
-                    fontSize: '16px',
-                    border: 'none',
-                    cursor: isLoadingMore ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease-in-out',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                    transform: 'translateY(0)',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isLoadingMore) {
-                      e.currentTarget.style.backgroundColor = '#f3f4f6';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isLoadingMore) {
-                      e.currentTarget.style.backgroundColor = '#ffffff';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
-                    }
-                  }}
-                >
-                  {isLoadingMore ? 'Finding More Movies...' : 'Get 10 More Movies'}
-                </button>
-              </div>
+                  
+                  {/* Movie Info */}
+                  <div style={{ padding: '20px' }}>
+                    <h3 style={{ 
+                      fontSize: '12px', 
+                      fontWeight: '600', 
+                      color: '#ffffff',
+                      margin: '0 0 6px 0',
+                      lineHeight: '1.3'
+                    }}>
+                      {movie.split(' (')[0]}
+                    </h3>
+                    <div style={{ 
+                      fontSize: '10px', 
+                      color: '#9ca3af',
+                      marginBottom: '8px'
+                    }}>
+                      {movie.match(/\((\d{4})\)/) ? movie.match(/\((\d{4})\)/)![1] : ''}
+                      {movie.includes(' - ') && (
+                        <span style={{ marginLeft: '8px' }}>
+                          • {movie.split(' - ')[1]}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {showingDetails[movie] && descriptions[movie] && (
+                      <div style={{ 
+                        fontSize: '13px', 
+                        color: '#d1d5db',
+                        lineHeight: '1.4',
+                        marginTop: '12px',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}>
+                        {descriptions[movie].description?.substring(0, 150)}...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
 
-        {!recommendations && (
-          <section className="w-full max-w-7xl mt-16">
-            <h2 className="text-3xl font-bold text-white mb-6 text-center">Trending This Week</h2>
-            <div className="relative group">
-              <div
-                id="trending-container"
-                className="flex overflow-x-auto w-full scroll-smooth hide-scrollbar"
-                style={{ 
-                  gap: '25px',
-                  paddingTop: '20px',
-                  paddingBottom: '64px',
-                  paddingLeft: '0px',
-                  paddingRight: '0px'
-                }}
-              >
-                {trendingMovies
-                  .filter((movie) => movie.poster_path)
-                  .map((movie) => (
-                    <a
-                      key={movie.id}
-                      href={`https://www.themoviedb.org/movie/${movie.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-                      className="relative block flex-shrink-0 rounded-[40px] overflow-hidden transition-all duration-300 shadow-xl hover:shadow-red-500/60 hover:scale-105 trending-poster"
-                      style={{ 
-                        width: '350px',
-                        height: '525px',
-                        border: '2px solid rgba(255, 255, 255, 0.7)' 
-                      }}
-        >
-          <Image
-                        src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-                        alt={movie.title}
-                        fill
-                        className="object-cover"
-                        sizes="300px"
-                      />
-                    </a>
-                  ))}
-              </div>
-            </div>
-          </section>
+
+          </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

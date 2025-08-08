@@ -44,7 +44,7 @@ export async function POST(request: Request) {
           role: "user",
           content: `Based on these movies: ${movies}
 
-Please recommend 10 NEW and DIFFERENT movies that match the genre mix, intended audience, ratings, and time periods of the input movies. Consider the ratio of genres in each movie and include at least one movie that blends multiple genres from the input movies.
+Please recommend 7 NEW and DIFFERENT movies that match the genre mix, intended audience, ratings, and time periods of the input movies. Consider the ratio of genres in each movie and include at least one movie that blends multiple genres from the input movies.
 
 CRITICAL: Do NOT recommend any of these movies under any circumstances:
 ${excludeMovies.length > 0 ? excludeMovies.join('\n') : 'None specified'}
@@ -56,7 +56,7 @@ Example format:
 The Godfather (1972) - Francis Ford Coppola
 Inception (2010) - Christopher Nolan
 
-Return exactly 10 movies, one per line, no additional text or explanations.`
+Return exactly 7 movies, one per line, no additional text or explanations.`
         }
       ],
       temperature: 0.7,
