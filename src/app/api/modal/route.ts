@@ -38,10 +38,6 @@ const cleanMovieTitle = (title: string) => {
     .trim();
 };
 
-
-
-
-
 interface TMDBError {
   message: string;
   type?: string;
@@ -54,29 +50,27 @@ interface TMDBError {
 export async function POST(request: Request) {
   try {
     const { movieName } = await request.json();
+
     if (!movieName) {
       return NextResponse.json(
-        { error: 'Please provide a movie title' },
+        { error: 'Movie name is required' },
         { status: 400 }
       );
     }
 
-    // Extract movie title and year from our format
-    const { title, year } = extractMovieInfo(movieName);
-    
     const tmdbApiKey = process.env.TMDB_API_KEY;
     if (!tmdbApiKey) {
       return NextResponse.json(
-        { error: 'Movie API key is not configured' },
+        { error: 'TMDB API key not configured' },
         { status: 500 }
       );
     }
 
-    // Clean up the title for searching
+    // Extract movie info from the formatted string
+    const { title, year } = extractMovieInfo(movieName);
     const searchTitle = cleanMovieTitle(title);
-    console.log('Searching for movie:', { original: title, cleaned: searchTitle, year });
 
-    // First, search for the movie to get its TMDB ID
+    // Search for the movie on TMDB
     const searchResponse = await axios.get(
       `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(searchTitle)}${year ? `&year=${year}` : ''}`,
       {
@@ -110,9 +104,9 @@ export async function POST(request: Request) {
     // Get the first (most relevant) result
     const movieData = searchResponse.data.results[0];
 
-    // Get detailed movie info including credits and watch providers
+    // Get detailed movie info including credits, videos, and watch providers
     const detailsResponse = await axios.get(
-      `https://api.themoviedb.org/3/movie/${movieData.id}?append_to_response=credits,watch/providers`,
+      `https://api.themoviedb.org/3/movie/${movieData.id}?append_to_response=credits,videos,watch/providers`,
       {
         headers: {
           'Authorization': `Bearer ${tmdbApiKey}`,
@@ -123,32 +117,44 @@ export async function POST(request: Request) {
 
     const movie_data = detailsResponse.data;
     
-    // Format genres into a string
-    const genres = movie_data.genres.map((g: { name: string }) => g.name).join(', ');
+    // Format genres into array
+    const genres = movie_data.genres.map((g: { name: string }) => g.name);
 
-    // Get top cast members (up to 3)
+    // Get director from crew
+    const director = movie_data.credits.crew.find((person: { job: string }) => person.job === 'Director')?.name || '';
+
+    // Get top cast members (up to 6)
     const topCast = movie_data.credits.cast
-      .slice(0, 3)
-      .map((actor: { name: string }) => actor.name)
-      .join(', ');
+      .slice(0, 6)
+      .map((actor: { name: string }) => actor.name);
 
-    // Format streaming providers if available
-    let streamingInfo = '';
-    if (movie_data['watch/providers']?.results?.US?.flatrate) {
-      const providers = movie_data['watch/providers'].results.US.flatrate
-        .slice(0, 3)
-        .map((provider: { provider_name: string }) => provider.provider_name)
-        .join(', ');
-      streamingInfo = `\n🎬 Movie Availability: ${providers}`;
-    } else {
-      streamingInfo = `\n🎬 Movie Availability: Check streaming platforms`;
-    }
+    // Get trailer URL if available
+    const trailerVideo = movie_data.videos?.results?.find(
+      (video: { type: string, site: string }) => video.type === 'Trailer' && video.site === 'YouTube'
+    );
+    const trailerUrl = trailerVideo ? `https://www.youtube.com/watch?v=${trailerVideo.key}` : null;
 
-    // Return comprehensive movie information with TMDB attribution
+    // Format streaming providers array
+    const streamingProviders = movie_data['watch/providers']?.results?.US?.flatrate
+      ? movie_data['watch/providers'].results.US.flatrate
+          .slice(0, 5)
+          .map((provider: { provider_name: string }) => provider.provider_name)
+      : [];
+
+    // Return comprehensive movie information for desktop modal
     return NextResponse.json({
-      description: `${movie_data.overview}\n\n🎭 Cast: ${topCast}\n⭐ Rating: ${movie_data.vote_average.toFixed(1)}/10\n🎬 ${genres}\n⏱️ ${Math.floor(movie_data.runtime / 60)}h ${movie_data.runtime % 60}min${streamingInfo}\n\nClick image for more info`,
-      poster_path: movie_data.poster_path ? `https://image.tmdb.org/t/p/w500${movie_data.poster_path}` : null,
       title: movie_data.title,
+      description: movie_data.overview,
+      poster_path: movie_data.poster_path ? `https://image.tmdb.org/t/p/w500${movie_data.poster_path}` : null,
+      backdrop_path: movie_data.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie_data.backdrop_path}` : null,
+      cast: topCast,
+      director: director,
+      genres: genres,
+      runtime: movie_data.runtime,
+      rating: movie_data.vote_average,
+      year: new Date(movie_data.release_date).getFullYear(),
+      streaming: streamingProviders,
+      trailer: trailerUrl,
       tmdb_url: `https://www.themoviedb.org/movie/${movie_data.id}`
     });
     

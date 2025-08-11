@@ -6,7 +6,7 @@ import Image from 'next/image';
 
 interface MovieDescription {
   title: string;
-  description: string;
+  description: string; // Formatted description for mobile
   poster_path: string;
   cast?: string[];
   streaming?: string[];
@@ -22,6 +22,22 @@ interface TrendingMovie {
   release_date: string;
 }
 
+interface ModalMovieData {
+  title: string;
+  description: string; // Clean overview for modal
+  poster_path: string;
+  backdrop_path?: string;
+  cast?: string[];
+  director?: string;
+  genres?: string[];
+  runtime?: number;
+  rating?: number;
+  year?: number;
+  streaming?: string[];
+  trailer?: string;
+  tmdb_url?: string;
+}
+
 export default function Home() {
   const [movies, setMovies] = useState('');
   const [recommendations, setRecommendations] = useState<string | null>(null);
@@ -31,6 +47,10 @@ export default function Home() {
     const [descriptions, setDescriptions] = useState<Record<string, MovieDescription>>({});
   const [loadingDescriptions, setLoadingDescriptions] = useState<Record<string, boolean>>({});
   const [showingDetails, setShowingDetails] = useState<Record<string, boolean>>({});
+  const [modalMovie, setModalMovie] = useState<string | null>(null);
+  const [modalData, setModalData] = useState<Record<string, ModalMovieData>>({});
+  const [loadingModal, setLoadingModal] = useState<Record<string, boolean>>({});
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Record<string, boolean>>({});
   const [mobilePosters, setMobilePosters] = useState<Record<string, string>>({});
   const [loadingMobilePosters, setLoadingMobilePosters] = useState<Record<string, boolean>>({});
   const [mobileRatings, setMobileRatings] = useState<Record<string, string>>({});
@@ -149,6 +169,31 @@ export default function Home() {
       }));
     } finally {
       setLoadingDescriptions(prev => ({ ...prev, [movie]: false }));
+    }
+  };
+
+  const fetchModalData = async (movie: string) => {
+    if (modalData[movie] || loadingModal[movie]) {
+      return;
+    }
+
+    setLoadingModal(prev => ({ ...prev, [movie]: true }));
+    try {
+      const response = await axios.post<ModalMovieData>('/api/modal', { movieName: movie });
+      setModalData(prev => ({ ...prev, [movie]: response.data }));
+    } catch (err) {
+      const error = err as AxiosError;
+      console.error(`Error fetching modal data for ${movie}:`, error);
+      setModalData(prev => ({
+        ...prev,
+        [movie]: { 
+          title: movie.split(' (')[0], 
+          description: 'Failed to load movie details.',
+          poster_path: ''
+        },
+      }));
+    } finally {
+      setLoadingModal(prev => ({ ...prev, [movie]: false }));
     }
   };
 
@@ -732,6 +777,299 @@ export default function Home() {
     );
   }
 
+  // Netflix-style Modal Component
+  const NetflixModal = () => {
+    if (!modalMovie) return null;
+    
+    if (loadingModal[modalMovie]) {
+      return (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+          onClick={() => setModalMovie(null)}
+        >
+          <div style={{ 
+            color: '#ffffff', 
+            fontSize: '18px',
+            textAlign: 'center'
+          }}>
+            Loading movie details...
+          </div>
+        </div>
+      );
+    }
+    
+    if (!modalData[modalMovie]) return null;
+    
+    const movie = modalData[modalMovie];
+    
+    return (
+      <div 
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setModalMovie(null);
+          }
+        }}
+      >
+        <div 
+          style={{
+            backgroundColor: '#181818',
+            borderRadius: '8px',
+            maxWidth: '850px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            position: 'relative'
+          }}
+        >
+          {/* Close Button */}
+          <button
+            onClick={() => setModalMovie(null)}
+            style={{
+              position: 'absolute',
+              top: '15px',
+              right: '15px',
+              backgroundColor: '#181818',
+              border: 'none',
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 1001,
+              fontSize: '18px',
+              color: '#ffffff'
+            }}
+          >
+            ✕
+          </button>
+
+          {/* Backdrop/Hero Section */}
+          <div 
+            style={{
+              height: '480px',
+              backgroundImage: movie.backdrop_path 
+                ? `linear-gradient(to bottom, transparent 0%, rgba(24, 24, 24, 0.8) 100%), url(${movie.backdrop_path})`
+                : `linear-gradient(135deg, #1f1f1f 0%, #2d2d2d 100%)`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              display: 'flex',
+              alignItems: 'flex-end',
+              padding: '40px'
+            }}
+          >
+            <div style={{ maxWidth: '60%' }}>
+              <h1 style={{ 
+                fontSize: '48px', 
+                fontWeight: 'bold', 
+                marginBottom: '16px',
+                textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+              }}>
+                {movie.title || modalMovie.split(' (')[0]}
+              </h1>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                {movie.rating && (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '4px',
+                    fontSize: '16px',
+                    fontWeight: '600'
+                  }}>
+                    <span style={{ color: '#fbbf24' }}>⭐</span>
+                    <span>{movie.rating.toFixed(1)}</span>
+                  </div>
+                )}
+                
+                {movie.year && (
+                  <span style={{ fontSize: '16px', color: '#d1d5db' }}>{movie.year}</span>
+                )}
+                
+                {movie.runtime && (
+                  <span style={{ fontSize: '16px', color: '#d1d5db' }}>
+                    {Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+                <button 
+                  onClick={() => {
+                    if (movie.trailer) {
+                      window.open(movie.trailer, '_blank');
+                    }
+                  }}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    color: '#000000',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '12px 24px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: movie.trailer ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    opacity: movie.trailer ? 1 : 0.5
+                  }}
+                >
+                  ▶ {movie.trailer ? 'Play Trailer' : 'No Trailer Available'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Section */}
+          <div style={{ padding: '40px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '40px' }}>
+              {/* Left Column - Description and Cast */}
+              <div>
+                <div style={{ 
+                  fontSize: '16px', 
+                  lineHeight: '1.6', 
+                  color: '#ffffff',
+                  marginBottom: '24px'
+                }}>
+                  {(() => {
+                    const maxLength = 300;
+                    const isExpanded = expandedDescriptions[modalMovie];
+                    const description = movie.description || '';
+                    
+                    if (description.length <= maxLength) {
+                      return <p style={{ margin: 0 }}>{description}</p>;
+                    }
+                    
+                    return (
+                      <p style={{ margin: 0 }}>
+                        {isExpanded ? description : `${description.substring(0, maxLength)}`}
+                        <button
+                          onClick={() => setExpandedDescriptions(prev => ({ 
+                            ...prev, 
+                            [modalMovie]: !prev[modalMovie] 
+                          }))}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#8b5cf6',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            fontWeight: '600',
+                            marginLeft: '4px',
+                            padding: 0
+                          }}
+                        >
+                          {isExpanded ? ' Show less' : '... Show more'}
+                        </button>
+                      </p>
+                    );
+                  })()}
+                </div>
+                
+                {movie.cast && movie.cast.length > 0 && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <span style={{ color: '#777777', fontSize: '14px' }}>Cast: </span>
+                    <span style={{ fontSize: '14px' }}>{movie.cast.join(', ')}</span>
+                  </div>
+                )}
+                
+                {movie.genres && movie.genres.length > 0 && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <span style={{ color: '#777777', fontSize: '14px' }}>Genres: </span>
+                    <span style={{ fontSize: '14px' }}>{movie.genres.join(', ')}</span>
+                  </div>
+                )}
+                
+                {movie.director && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <span style={{ color: '#777777', fontSize: '14px' }}>Director: </span>
+                    <span style={{ fontSize: '14px' }}>{movie.director}</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Right Column - Additional Info */}
+              <div>
+                {movie.streaming && movie.streaming.length > 0 && (
+                  <div style={{ marginBottom: '24px' }}>
+                    <h4 style={{ 
+                      fontSize: '16px', 
+                      fontWeight: '600', 
+                      marginBottom: '12px',
+                      color: '#ffffff'
+                    }}>
+                      Available On:
+                    </h4>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {movie.streaming.map((service, index) => (
+                        <span 
+                          key={index}
+                          style={{
+                            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                            color: '#a78bfa',
+                            padding: '6px 12px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          {service}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {movie.tmdb_url && (
+                  <a 
+                    href={movie.tmdb_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{
+                      color: '#8b5cf6',
+                      textDecoration: 'none',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    View on TMDB →
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Desktop Layout - Redesigned
   return (
     <div style={{ 
@@ -764,7 +1102,7 @@ export default function Home() {
             maxWidth: '600px',
             margin: '0 auto'
           }}>
-            Input movies you like, receive recommendations everyone can enjoy!
+            List movies you like, receive recommendations everyone can enjoy!
           </p>
         </div>
 
@@ -778,15 +1116,20 @@ export default function Home() {
         }}>
           <form onSubmit={handleSubmit} style={{ position: 'relative', width: '100%' }}>
             <div style={{ position: 'relative', marginBottom: '24px' }}>
-              <div style={{
-                position: 'absolute',
-                left: '20px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#9ca3af',
-                fontSize: '24px',
-                zIndex: 1
-              }}>
+              <div 
+                id="search-icon"
+                style={{
+                  position: 'absolute',
+                  left: '20px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#9ca3af',
+                  fontSize: '28px',
+                  zIndex: 1,
+                  lineHeight: '1',
+                  transition: 'all 0.3s ease',
+                  pointerEvents: 'none'
+                }}>
                 🔍
               </div>
               <textarea
@@ -800,29 +1143,34 @@ export default function Home() {
                 spellCheck="false"
                 style={{
                   width: '100%',
-                  padding: '24px 24px 24px 60px',
+                  padding: '30px 24px 10px 60px',
                   backgroundColor: 'rgba(255, 255, 255, 0.95)',
                   border: 'none',
                   borderRadius: '50px',
                   color: '#000000',
-                  fontSize: '18px',
+                  fontSize: '22px',
                   fontWeight: '500',
-                  minHeight: '70px',
+                  minHeight: '50px',
                   resize: 'none',
                   outline: 'none',
                   boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
                   transition: 'all 0.3s ease',
                   boxSizing: 'border-box',
-                  display: 'flex',
-                  alignItems: 'center'
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  textAlign: 'left',
+                  lineHeight: '1.2'
                 }}
                 onFocus={(e) => {
                   e.target.style.boxShadow = '0 15px 35px rgba(139, 92, 246, 0.4)';
                   e.target.style.transform = 'translateY(-2px)';
+                  const icon = document.getElementById('search-icon');
+                  if (icon) icon.style.transform = 'translateY(-50%) translateY(-2px)';
                 }}
                 onBlur={(e) => {
                   e.target.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.3)';
                   e.target.style.transform = 'translateY(0)';
+                  const icon = document.getElementById('search-icon');
+                  if (icon) icon.style.transform = 'translateY(-50%) translateY(0px)';
                 }}
               />
             </div>
@@ -943,7 +1291,10 @@ export default function Home() {
                     width: '180px',
                     flexShrink: 0
                   }}
-                  onClick={() => fetchDescription(movie)}
+                  onClick={() => {
+                    fetchModalData(movie);
+                    setModalMovie(movie);
+                  }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-8px)';
                     e.currentTarget.style.boxShadow = '0 20px 40px rgba(139, 92, 246, 0.2)';
@@ -1002,6 +1353,7 @@ export default function Home() {
                     }}>
                       {movie.split(' (')[0]}
                     </h3>
+                    
                     <div style={{ 
                       fontSize: '10px', 
                       color: '#9ca3af',
@@ -1014,33 +1366,6 @@ export default function Home() {
                         </span>
                       )}
                     </div>
-                    
-                    {showingDetails[movie] && (
-                      loadingDescriptions[movie] ? (
-                        <div style={{ 
-                          fontSize: '13px', 
-                          color: '#9ca3af',
-                          marginTop: '12px',
-                          textAlign: 'center',
-                          padding: '12px'
-                        }}>
-                          Loading description...
-                        </div>
-                      ) : descriptions[movie] ? (
-                        <div style={{ 
-                          fontSize: '13px', 
-                          color: '#d1d5db',
-                          lineHeight: '1.4',
-                          marginTop: '12px',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
-                        }}>
-                          {descriptions[movie].description?.substring(0, 150)}...
-                        </div>
-                      ) : null
-                    )}
                   </div>
                 </div>
               ))}
@@ -1050,6 +1375,7 @@ export default function Home() {
           </div>
         )}
       </div>
+      <NetflixModal />
     </div>
   );
 }
