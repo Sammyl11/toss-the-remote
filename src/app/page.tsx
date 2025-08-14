@@ -394,6 +394,7 @@ export default function Home() {
                     <textarea
                       value={movies}
                       onChange={(e) => setMovies(e.target.value)}
+                      onKeyDown={handleKeyPress}
                       placeholder="e.g., The Dark Knight, Inception, Pulp Fiction"
                       style={{
                         width: '100%',
@@ -553,6 +554,7 @@ export default function Home() {
                 <textarea
                   value={movies}
                   onChange={(e) => setMovies(e.target.value)}
+                  onKeyDown={handleKeyPress}
                   placeholder="e.g., The Dark Knight, Inception, Pulp Fiction"
                   style={{
                     width: '100%',
@@ -750,7 +752,7 @@ export default function Home() {
               ))}
         </div>
             
-            <div style={{ textAlign: 'center', marginTop: '32px' }}>
+            <div style={{ textAlign: 'center', marginTop: '32px', marginBottom: '60px' }}>
               <button
                 onClick={handleGetMoreMovies}
                 disabled={isLoadingMore}
@@ -768,7 +770,7 @@ export default function Home() {
                   transform: 'translateY(0)',
                 }}
               >
-                {isLoadingMore ? 'Finding More Movies...' : 'Get 10 More Movies'}
+                {isLoadingMore ? 'Finding More Movies...' : 'Get More Movies'}
               </button>
             </div>
           </div>
