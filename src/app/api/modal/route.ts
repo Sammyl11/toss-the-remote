@@ -47,6 +47,15 @@ interface TMDBError {
   };
 }
 
+interface TMDBSearchResult {
+  id: number;
+  title: string;
+  release_date: string;
+  vote_count: number;
+  vote_average: number;
+  poster_path: string | null;
+}
+
 export async function POST(request: Request) {
   try {
     const { movieName } = await request.json();
@@ -120,7 +129,7 @@ export async function POST(request: Request) {
     }
 
     // Sort results with priority: exact title+year match > exact title match > popularity
-    const sortedResults = searchResponse.data.results.sort((a: any, b: any) => {
+    const sortedResults = searchResponse.data.results.sort((a: TMDBSearchResult, b: TMDBSearchResult) => {
       // Check for exact title match (case insensitive)
       const exactTitleA = a.title.toLowerCase() === title.toLowerCase() ? 1 : 0;
       const exactTitleB = b.title.toLowerCase() === title.toLowerCase() ? 1 : 0;
