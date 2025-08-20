@@ -68,11 +68,13 @@ export async function POST(request: Request) {
 
     // Extract movie info from the formatted string
     const { title, year } = extractMovieInfo(movieName);
-    const searchTitle = cleanMovieTitle(title);
+    
+    // Try exact title match first, then cleaned title if needed
+    console.log('Searching for movie:', { original: title, year });
 
-    // Search for the movie on TMDB
-    const searchResponse = await axios.get(
-      `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(searchTitle)}${year ? `&year=${year}` : ''}`,
+    // First, try searching with the exact title
+    let searchResponse = await axios.get(
+      `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(title)}${year ? `&year=${year}` : ''}`,
       {
         headers: {
           'Authorization': `Bearer ${tmdbApiKey}`,
@@ -81,10 +83,26 @@ export async function POST(request: Request) {
       }
     );
 
+    // If exact title search doesn't yield good results, try with cleaned title
     if (!searchResponse.data.results || searchResponse.data.results.length === 0) {
-      // If no exact match found, try a broader search without the year
+      const cleanedTitle = cleanMovieTitle(title);
+      console.log('Trying cleaned title:', cleanedTitle);
+      searchResponse = await axios.get(
+        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(cleanedTitle)}${year ? `&year=${year}` : ''}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${tmdbApiKey}`,
+            'accept': 'application/json'
+          }
+        }
+      );
+    }
+
+    if (!searchResponse.data.results || searchResponse.data.results.length === 0) {
+      // If no exact match found, try a broader search without the year using cleaned title
+      const cleanedTitle = cleanMovieTitle(title);
       const broadSearchResponse = await axios.get(
-        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(searchTitle)}`,
+        `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(cleanedTitle)}`,
         {
           headers: {
             'Authorization': `Bearer ${tmdbApiKey}`,
@@ -101,8 +119,39 @@ export async function POST(request: Request) {
       searchResponse.data.results = broadSearchResponse.data.results;
     }
 
-    // Get the first (most relevant) result
-    const movieData = searchResponse.data.results[0];
+    // Sort results with priority: exact title+year match > exact title match > popularity
+    const sortedResults = searchResponse.data.results.sort((a: any, b: any) => {
+      // Check for exact title match (case insensitive)
+      const exactTitleA = a.title.toLowerCase() === title.toLowerCase() ? 1 : 0;
+      const exactTitleB = b.title.toLowerCase() === title.toLowerCase() ? 1 : 0;
+      
+      // Check for exact year match if year is provided
+      let exactYearA = 0;
+      let exactYearB = 0;
+      if (year) {
+        const yearA = new Date(a.release_date).getFullYear().toString();
+        const yearB = new Date(b.release_date).getFullYear().toString();
+        exactYearA = yearA === year ? 1 : 0;
+        exactYearB = yearB === year ? 1 : 0;
+      }
+      
+      // Calculate combined match score (title + year)
+      const combinedScoreA = exactTitleA * 2 + exactYearA;
+      const combinedScoreB = exactTitleB * 2 + exactYearB;
+      
+      // If combined scores are different, prioritize higher score
+      if (combinedScoreA !== combinedScoreB) {
+        return combinedScoreB - combinedScoreA;
+      }
+      
+      // If combined scores are equal, sort by popularity
+      const popularityA = (a.vote_count || 0) * (a.vote_average || 0);
+      const popularityB = (b.vote_count || 0) * (b.vote_average || 0);
+      return popularityB - popularityA; // Descending order
+    });
+    
+    // Get the most popular result
+    const movieData = sortedResults[0];
 
     // Get detailed movie info including credits, videos, and watch providers
     const detailsResponse = await axios.get(

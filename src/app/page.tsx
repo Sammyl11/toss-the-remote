@@ -56,9 +56,17 @@ export default function Home() {
   const [mobileRatings, setMobileRatings] = useState<Record<string, string>>({});
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [previousMovies, setPreviousMovies] = useState<string[]>([]);
+  const [showingTrailer, setShowingTrailer] = useState<{ [key: string]: boolean }>({});
   const [showingMobileForm, setShowingMobileForm] = useState(true);
   const [showingMobileTrending, setShowingMobileTrending] = useState(false);
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
+
+  // Helper function to extract YouTube video ID from URL
+  const getYouTubeVideoId = (url: string): string | null => {
+    if (!url) return null;
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    return match ? match[1] : null;
+  };
 
   // Mobile detection
   useEffect(() => {
@@ -662,15 +670,19 @@ export default function Home() {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#9ca3af',
-                          fontSize: '20px',
+                          color: showingDetails[movie] ? '#8b5cf6' : '#9ca3af',
+                          fontSize: '28px',
                           cursor: 'pointer',
-                          padding: '4px',
-                          transform: showingDetails[movie] ? 'rotate(180deg)' : 'rotate(0deg)',
-                          transition: 'transform 0.2s ease'
+                          padding: '8px',
+                          minWidth: '40px',
+                          minHeight: '40px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'color 0.2s ease'
                         }}
                       >
-                        ▼
+                        ≡
                       </button>
                     </div>
                     <div style={{ marginBottom: '12px' }}>
@@ -834,6 +846,7 @@ export default function Home() {
         onClick={(e) => {
           if (e.target === e.currentTarget) {
             setModalMovie(null);
+            setShowingTrailer({});
           }
         }}
       >
@@ -850,7 +863,10 @@ export default function Home() {
         >
           {/* Close Button */}
           <button
-            onClick={() => setModalMovie(null)}
+            onClick={() => {
+              setModalMovie(null);
+              setShowingTrailer({});
+            }}
             style={{
               position: 'absolute',
               top: '15px',
@@ -883,9 +899,50 @@ export default function Home() {
               backgroundPosition: 'center',
               display: 'flex',
               alignItems: 'flex-end',
-              padding: '40px'
+              padding: '40px',
+              position: 'relative'
             }}
           >
+            {/* Embedded Trailer Overlay */}
+            {showingTrailer[modalMovie] && movie.trailer && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '40px',
+                zIndex: 10
+              }}>
+                <div style={{
+                  position: 'relative',
+                  width: '100%',
+                  maxWidth: '640px',
+                  paddingBottom: '36%', // 16:9 aspect ratio for wider view
+                  height: 0,
+                  overflow: 'hidden',
+                  borderRadius: '8px'
+                }}>
+                  <iframe
+                    src={`https://www.youtube.com/embed/${getYouTubeVideoId(movie.trailer)}?autoplay=1&rel=0&modestbranding=1`}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      border: 'none'
+                    }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            )}
             <div style={{ maxWidth: '60%' }}>
               <h1 style={{ 
                 fontSize: '48px', 
@@ -925,7 +982,10 @@ export default function Home() {
                 <button 
                   onClick={() => {
                     if (movie.trailer) {
-                      window.open(movie.trailer, '_blank');
+                      setShowingTrailer(prev => ({ 
+                        ...prev, 
+                        [modalMovie]: !prev[modalMovie] 
+                      }));
                     }
                   }}
                   style={{
@@ -943,7 +1003,7 @@ export default function Home() {
                     opacity: movie.trailer ? 1 : 0.5
                   }}
                 >
-                  ▶ {movie.trailer ? 'Play Trailer' : 'No Trailer Available'}
+                  ▶ {movie.trailer ? (showingTrailer[modalMovie] ? 'Hide Trailer' : 'Play Trailer') : 'No Trailer Available'}
                 </button>
               </div>
             </div>
