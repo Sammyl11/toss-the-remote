@@ -538,11 +538,86 @@ export default function Home() {
                 </div>
               </div>
             )}
+            {/* Scroll Down Arrow - Always show before about section */}
+            <div style={{
+              textAlign: 'center',
+              margin: '100px 0 80px 0'
+            }}>
+              <div style={{
+                fontSize: '16px',
+                color: '#8b5cf6',
+                marginBottom: '8px',
+                fontWeight: '500'
+              }}>
+                Scroll to learn more
+              </div>
+              <div style={{
+                fontSize: '24px',
+                color: '#8b5cf6',
+                animation: 'bounce 2s infinite'
+              }}>
+                ↓
+              </div>
+            </div>
+            {/* Mobile About Section - Only on home screen */}
+            <div style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              padding: '24px',
+              borderRadius: '16px',
+              marginTop: '32px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}>
+              <h2 style={{
+                fontSize: '28px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                marginBottom: '20px',
+                textAlign: 'center',
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>
+                About
+              </h2>
+              
+              <div style={{
+                fontSize: '16px',
+                lineHeight: '1.6',
+                color: '#e5e7eb'
+              }}>
+                <p style={{ marginBottom: '16px' }}>
+                  Movie night is hard; Toss the Remote can make it easier.
+                </p>
+                
+                <p style={{ marginBottom: '16px' }}>
+                  Our site helps you discover the perfect movie by blending recommendations based on what you already love. Just input a few movies you like, and Toss the Remote will generate new suggestions that mix and match genres, vibes, and storytelling styles.
+                </p>
+                
+                <p style={{ marginBottom: '16px' }}>
+                  One of the best ways to use the site is during group movie nights. Everybody at the watch party can input 1 movie, and our AI will find something that hits the sweet spot for everyone.
+                </p>
+                
+                <p style={{ marginBottom: '16px' }}>
+                  No more endless scrolling, no more debates, it's time to Toss the Remote!
+                </p>
+
+                <p style={{ marginBottom: '0px', lineHeight: '1.2' }}>
+                  Enjoy,<br/>
+                  Sammy
+                </p>
+              </div>
+            </div>
+            
+            {/* Extra spacing after mobile about section */}
+            <div style={{ height: '60px' }} />
           </>
         ) : (
           <div>
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <h1 style={{ fontSize: '36px', fontWeight: 'bold', color: '#ffffff', marginBottom: '8px' }}>
+              <h1 style={{ fontSize: '48px', fontWeight: 'bold', background: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 50%,rgb(148, 108, 157) 100%)',WebkitBackgroundClip: 'text',
+             WebkitTextFillColor: 'transparent',
+             backgroundClip: 'text', textShadow: '0 0 30px rgba(139, 92, 246, 0.4)',marginBottom: '16px' }}>
                 Toss the Remote
               </h1>
             </div>
