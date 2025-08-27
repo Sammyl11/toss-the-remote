@@ -1294,92 +1294,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Scroll Down Arrow */}
-        <div style={{
-          textAlign: 'center',
-          margin: '80px 0 60px 0'
-        }}>
-          <div style={{
-            fontSize: '16px',
-            color: '#8b5cf6',
-            marginBottom: '8px',
-            fontWeight: '500'
-          }}>
-            Scroll to learn more
-          </div>
-          <div style={{
-            fontSize: '24px',
-            color: '#8b5cf6',
-            animation: 'bounce 2s infinite'
-          }}>
-            ↓
-          </div>
-        </div>
-
-        {/* Spacer to push about section lower */}
-        <div style={{ height: '200px' }} />
-
-        {/* Purple Line Divider */}
-        <div style={{
-          width: '100%',
-          height: '3px',
-          background: 'linear-gradient(90deg, #8b5cf6 0%, #a78bfa 50%, #8b5cf6 100%)',
-          margin: '60px auto',
-          borderRadius: '2px',
-          boxShadow: '0 0 20px rgba(139, 92, 246, 0.5)'
-        }} />
-
-        {/* About Section */}
-        <div style={{
-          maxWidth: '800px',
-          margin: '0 auto 120px auto',
-          textAlign: 'center'
-        }}>
-          <h2 style={{
-            fontSize: '64px',
-            fontWeight: 'bold',
-            color: '#ffffff',
-            marginBottom: '42px',
-            background: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}>
-            About
-          </h2>
-          
-          <div style={{
-            fontSize: '20px',
-            lineHeight: '1.8',
-            color: '#e5e7eb',
-            textAlign: 'left',
-            maxWidth: '700px',
-            margin: '0 auto'
-          }}>
-            <p style={{ marginBottom: '24px' }}>
-              Movie night is hard; Toss the Remote can make it easier.
-            </p>
-            
-            <p style={{ marginBottom: '24px' }}>
-              Our site helps you discover the perfect movie by blending recommendations based on what you already love. Just input a few movies you like, and Toss the Remote will generate new suggestions that mix and match genres, vibes, and storytelling styles.
-            </p>
-            
-            <p style={{ marginBottom: '24px' }}>
-              One of the best ways to use the site is during group movie nights. Everybody at the watch party can input 1 movie, and our AI will find something that hits the sweet spot for everyone.
-            </p>
-            
-                         <p style={{ marginBottom: '24px' }}>
-               No more endless scrolling, no more debates, it&apos;s time to Toss the Remote!
-             </p>
- 
-             <p style={{ marginBottom: '0px', lineHeight: '1.2' }}>
-               Enjoy,<br/>
-               Sammy
-             </p>
-          </div>
-        </div>
-
-        {/* Recommendations Section */}
+                {/* Recommendations Section */}
         {recommendationList.length > 0 && (
           <div>
             <div style={{ 
@@ -1524,6 +1439,91 @@ export default function Home() {
 
           </div>
         )}
+
+        {/* Spacer to push about section lower - Only when no recommendations */}
+        {recommendationList.length === 0 && <div style={{ height: '200px' }} />}
+
+        {/* Scroll Down Arrow - Always show before about section */}
+        <div style={{
+          textAlign: 'center',
+          margin: '80px 0 60px 0'
+        }}>
+          <div style={{
+            fontSize: '16px',
+            color: '#8b5cf6',
+            marginBottom: '8px',
+            fontWeight: '500'
+          }}>
+            Scroll to learn more
+          </div>
+          <div style={{
+            fontSize: '24px',
+            color: '#8b5cf6',
+            animation: 'bounce 2s infinite'
+          }}>
+            ↓
+          </div>
+        </div>
+
+        {/* Purple Line Divider */}
+        <div style={{
+          width: '100%',
+          height: '3px',
+          background: 'linear-gradient(90deg, #8b5cf6 0%, #a78bfa 50%, #8b5cf6 100%)',
+          margin: '60px auto',
+          borderRadius: '2px',
+          boxShadow: '0 0 20px rgba(139, 92, 246, 0.5)'
+        }} />
+
+        {/* About Section */}
+        <div style={{
+          maxWidth: '800px',
+          margin: '0 auto 120px auto',
+          textAlign: 'center'
+        }}>
+          <h2 style={{
+            fontSize: '64px',
+            fontWeight: 'bold',
+            color: '#ffffff',
+            marginBottom: '42px',
+            background: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>
+            About
+          </h2>
+          
+          <div style={{
+            fontSize: '20px',
+            lineHeight: '1.8',
+            color: '#e5e7eb',
+            textAlign: 'left',
+            maxWidth: '700px',
+            margin: '0 auto'
+          }}>
+            <p style={{ marginBottom: '24px' }}>
+              Movie night is hard; Toss the Remote can make it easier.
+            </p>
+            
+            <p style={{ marginBottom: '24px' }}>
+              Our site helps you discover the perfect movie by blending recommendations based on what you already love. Just input a few movies you like, and Toss the Remote will generate new suggestions that mix and match genres, vibes, and storytelling styles.
+            </p>
+            
+            <p style={{ marginBottom: '24px' }}>
+              One of the best ways to use the site is during group movie nights. Everybody at the watch party can input 1 movie, and our AI will find something that hits the sweet spot for everyone.
+            </p>
+            
+            <p style={{ marginBottom: '24px' }}>
+              No more endless scrolling, no more debates, it&apos;s time to Toss the Remote!
+            </p>
+
+            <p style={{ marginBottom: '0px', lineHeight: '1.2' }}>
+              Enjoy,<br/>
+              Sammy
+            </p>
+          </div>
+        </div>
       </div>
       <NetflixModal />
     </div>
