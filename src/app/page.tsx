@@ -599,7 +599,7 @@ export default function Home() {
                 </p>
                 
                 <p style={{ marginBottom: '16px' }}>
-                  No more endless scrolling, no more debates, it's time to Toss the Remote!
+                  No more endless scrolling, no more debates, it&apos;s time to Toss the Remote!
                 </p>
 
                 <p style={{ marginBottom: '0px', lineHeight: '1.2' }}>
