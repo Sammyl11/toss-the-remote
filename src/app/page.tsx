@@ -634,7 +634,7 @@ export default function Home() {
                 Enter Your Favorite Movies
               </h2>
               <p style={{ color: '#9ca3af', marginBottom: '24px', fontSize: '14px' }}>
-                List movies you love, separated by commas. Our AI will find similar films you might enjoy&apos;!
+                List movies you love, separated by commas. Our AI will find similar films you might enjoy!
               </p>
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <textarea
