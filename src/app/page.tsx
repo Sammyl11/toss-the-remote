@@ -1414,8 +1414,10 @@ export default function Home() {
               gap: '20px',
               marginBottom: '60px',
               justifyContent: 'center',
-              maxWidth: '2000px',
-              margin: '0 auto 60px auto'
+              maxWidth: '100%',
+              margin: '0 auto 60px auto',
+              padding: '0 20px',
+              overflow: 'hidden'
             }}>
               {recommendationList.slice(0, 7).map((movie, index) => (
                 <div
@@ -1428,8 +1430,9 @@ export default function Home() {
                     cursor: 'pointer',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     position: 'relative',
-                    width: '180px',
-                    flexShrink: 0
+                    flex: '1 1 auto',
+                    minWidth: '120px',
+                    maxWidth: '200px'
                   }}
                   onClick={() => {
                     fetchModalData(movie);
@@ -1449,16 +1452,24 @@ export default function Home() {
                   {/* Movie Poster */}
                   <div style={{ 
                     width: '100%', 
-                    height: '270px', 
+                    paddingBottom: '150%',
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     position: 'relative',
                     overflow: 'hidden'
                   }}>
                     {loadingMobilePosters[movie] ? (
-                      <div style={{ color: '#9ca3af', fontSize: '14px' }}>Loading...</div>
+                      <div style={{ 
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#9ca3af',
+                        fontSize: '14px'
+                      }}>Loading...</div>
                     ) : mobilePosters[movie] ? (
                       <Image
                         src={mobilePosters[movie]}
@@ -1472,6 +1483,14 @@ export default function Home() {
                       />
                     ) : (
                       <div style={{ 
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         color: '#9ca3af', 
                         fontSize: '14px',
                         textAlign: 'center',
