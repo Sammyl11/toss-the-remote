@@ -1430,9 +1430,9 @@ export default function Home() {
                     cursor: 'pointer',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     position: 'relative',
-                    flex: '1 1 auto',
-                    minWidth: '120px',
-                    maxWidth: '200px'
+                    flex: '1 1 0',
+                    minWidth: 0,
+                    width: 'calc((100% - 120px) / 7)'
                   }}
                   onClick={() => {
                     fetchModalData(movie);
