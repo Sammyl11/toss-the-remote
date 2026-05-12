@@ -53,6 +53,7 @@ interface TMDBSearchResult {
   release_date: string;
   vote_count: number;
   vote_average: number;
+  popularity: number;
   poster_path: string | null;
 }
 
@@ -153,10 +154,7 @@ export async function POST(request: Request) {
         return combinedScoreB - combinedScoreA;
       }
       
-      // If combined scores are equal, sort by popularity
-      const popularityA = (a.vote_count || 0) * (a.vote_average || 0);
-      const popularityB = (b.vote_count || 0) * (b.vote_average || 0);
-      return popularityB - popularityA; // Descending order
+      return (b.popularity || 0) - (a.popularity || 0);
     });
     
     // Get the most popular result

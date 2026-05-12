@@ -3,26 +3,25 @@ import axios from 'axios';
 
 // Helper function to extract the movie title from our format "Title (Year) - Director"
 const extractMovieInfo = (movieString: string) => {
-  // Remove extra spaces and normalize quotes
   const normalizedString = movieString
     .replace(/\s+/g, ' ')
     .replace(/[""]/g, '"')
     .trim();
 
-  // Try to match "Title (Year) - Director" format
-  const match = normalizedString.match(/(.+?)\s*\((\d{4})\)/i);
+  const match = normalizedString.match(/(.+?)\s*\((\d{4})\)(?:\s*-\s*(.+))?/i);
   if (match) {
     return {
       title: match[1].trim(),
-      year: match[2]
+      year: match[2],
+      director: match[3]?.trim() || ''
     };
   }
 
-  // If no match, just take everything before the hyphen or the whole string
-  const title = normalizedString.split('-')[0].trim();
+  const parts = normalizedString.split('-');
   return {
-    title,
-    year: ''
+    title: parts[0].trim(),
+    year: '',
+    director: parts[1]?.trim() || ''
   };
 };
 
@@ -57,6 +56,7 @@ interface TMDBSearchResult {
   release_date: string;
   vote_count: number;
   vote_average: number;
+  popularity: number;
   poster_path: string | null;
 }
 
@@ -70,8 +70,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Extract movie title and year from our format
-    const { title, year } = extractMovieInfo(movieName);
+    // Extract movie title, year, and director from our format
+    const { title, year, director } = extractMovieInfo(movieName);
     
     const tmdbApiKey = process.env.TMDB_API_KEY;
     if (!tmdbApiKey) {
@@ -156,10 +156,7 @@ export async function POST(request: Request) {
         return combinedScoreB - combinedScoreA;
       }
       
-      // If combined scores are equal, sort by popularity
-      const popularityA = (a.vote_count || 0) * (a.vote_average || 0);
-      const popularityB = (b.vote_count || 0) * (b.vote_average || 0);
-      return popularityB - popularityA; // Descending order
+      return (b.popularity || 0) - (a.popularity || 0);
     });
     
     // Get the most popular result

@@ -34,29 +34,21 @@ export async function POST(request: Request) {
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: "You are a movie recommendation expert. Always format your responses consistently with exactly one movie per line, using the format: 'Title (Year) - Director'"
+          content: "You are a movie recommendation expert. Format every response as exactly one movie per line: 'Title (Year) - Director'. Always include the year to distinguish movies with the same title."
         },
         {
           role: "user",
           content: `Based on these movies: ${movies}
 
-Please recommend 7 NEW and DIFFERENT movies that match the genre mix, intended audience, ratings, and time periods of the input movies. Consider the ratio of genres in each movie and include at least one movie that blends multiple genres from the input movies.
+Recommend 7 movies that match the genre mix, tone, intended audience, quality ratings, and time periods of the input movies. Consider the ratio of genres and include at least one movie that blends multiple genres from the input list.
 
-CRITICAL: Do NOT recommend any of these movies under any circumstances:
-${excludeMovies.length > 0 ? excludeMovies.join('\n') : 'None specified'}
+${excludeMovies.length > 0 ? `Do not recommend any of these movies:\n${excludeMovies.join('\n')}` : ''}
 
-${excludeMovies.length > 0 ? `These movies are ABSOLUTELY FORBIDDEN from your recommendations. If any of your recommendations has the same TITLE as any movie in the forbidden list above, do NOT include it - even if the year, director, or format is different. For example, if "The Departed" is forbidden, do not recommend "The Departed (2006) - Martin Scorsese" or any other version of The Departed.` : ''}
-
-Format each recommendation exactly as: Title (Year) - Director
-Example format:
-The Godfather (1972) - Francis Ford Coppola
-Inception (2010) - Christopher Nolan
-
-Return exactly 7 movies, one per line, no additional text or explanations.`
+Return exactly 7 movies, one per line, no additional text.`
         }
       ],
       temperature: 0.7,
