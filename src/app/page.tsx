@@ -928,7 +928,7 @@ export default function Home() {
           }
         }}
       >
-        <div 
+        <div
           style={{
             backgroundColor: '#181818',
             borderRadius: '8px',
@@ -936,7 +936,9 @@ export default function Home() {
             width: '100%',
             maxHeight: '90vh',
             overflow: 'hidden',
-            position: 'relative'
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
           {/* Close Button */}
@@ -967,10 +969,11 @@ export default function Home() {
           </button>
 
           {/* Backdrop/Hero Section */}
-          <div 
+          <div
             style={{
-              height: '480px',
-              backgroundImage: movie.backdrop_path 
+              height: 'clamp(220px, 45vh, 480px)',
+              flexShrink: 0,
+              backgroundImage: movie.backdrop_path
                 ? `linear-gradient(to bottom, transparent 0%, rgba(24, 24, 24, 0.8) 100%), url(${movie.backdrop_path})`
                 : `linear-gradient(135deg, #1f1f1f 0%, #2d2d2d 100%)`,
               backgroundSize: 'cover',
@@ -1088,7 +1091,7 @@ export default function Home() {
           </div>
 
           {/* Content Section */}
-          <div style={{ padding: '40px' }}>
+          <div style={{ padding: '40px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '40px' }}>
               {/* Left Column - Description and Cast */}
               <div>
@@ -1409,15 +1412,14 @@ export default function Home() {
             </div>
 
             {/* Movie Cards Grid */}
-            <div style={{ 
+            <div style={{
               display: 'flex',
               gap: '20px',
               marginBottom: '60px',
               justifyContent: 'center',
               maxWidth: '100%',
               margin: '0 auto 60px auto',
-              padding: '0 20px',
-              overflow: 'hidden'
+              padding: '12px 20px 0 20px'
             }}>
               {recommendationList.slice(0, 7).map((movie, index) => (
                 <div
