@@ -3,6 +3,8 @@
 import { useState, useEffect, FormEvent, KeyboardEvent } from 'react';
 import axios, { AxiosError } from 'axios';
 import Image from 'next/image';
+import { STREAMING_PROVIDERS, movieMatchesServices } from './lib/streamingProviders';
+import { isLikelySequelPair } from './lib/movieMatching';
 
 interface MovieDescription {
   title: string;
@@ -10,6 +12,7 @@ interface MovieDescription {
   poster_path: string;
   cast?: string[];
   streaming?: string[];
+  genres?: string[];
   trailer?: string;
   tmdb_url?: string;
 }
@@ -60,6 +63,54 @@ export default function Home() {
   const [showingMobileForm, setShowingMobileForm] = useState(true);
   const [showingMobileTrending, setShowingMobileTrending] = useState(false);
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [preferPopular, setPreferPopular] = useState(true);
+  const [useOriginalModel, setUseOriginalModel] = useState(false);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [replacedMovies, setReplacedMovies] = useState<Record<string, string>>({});
+  const [isFilteringResults, setIsFilteringResults] = useState(false);
+
+  // Load/persist the streaming-service filter selection
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('selectedStreamingServices');
+      if (saved) setSelectedServices(JSON.parse(saved));
+      const savedPreferPopular = localStorage.getItem('preferPopularMoviesV2');
+      if (savedPreferPopular !== null) setPreferPopular(savedPreferPopular === 'true');
+      const savedOriginalModel = localStorage.getItem('useOriginalModel');
+      if (savedOriginalModel !== null) setUseOriginalModel(savedOriginalModel === 'true');
+    } catch {
+      // ignore malformed/unavailable localStorage
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('selectedStreamingServices', JSON.stringify(selectedServices));
+    } catch {
+      // ignore unavailable localStorage
+    }
+  }, [selectedServices]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('preferPopularMoviesV2', String(preferPopular));
+    } catch {
+      // ignore unavailable localStorage
+    }
+  }, [preferPopular]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('useOriginalModel', String(useOriginalModel));
+    } catch {
+      // ignore unavailable localStorage
+    }
+  }, [useOriginalModel]);
+
+  const toggleService = (name: string) => {
+    setSelectedServices(prev => prev.includes(name) ? prev.filter(s => s !== name) : [...prev, name]);
+  };
 
   // Helper function to extract YouTube video ID from URL
   const getYouTubeVideoId = (url: string): string | null => {
@@ -100,22 +151,27 @@ export default function Home() {
     setDescriptions({});
     setShowingDetails({});
     setPreviousMovies([]);
+    setReplacedMovies({});
 
     try {
       // Parse input movies to exclude them from recommendations
       const inputMovies = parseInputMovies(movies);
       console.log('Input movies for exclusion:', inputMovies);
-      
-      const response = await axios.post<{ recommendations: string }>('/api/recommend', { 
-        movies, 
-        excludeMovies: inputMovies 
+
+      const response = await axios.post<{ recommendations: string }>('/api/recommend', {
+        movies,
+        excludeMovies: inputMovies,
+        services: selectedServices,
+        preferPopular,
+        useOriginalModel
       });
       setRecommendations(response.data.recommendations);
       const movieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
       setPreviousMovies([...inputMovies, ...movieList]);
-      
+
       // Load mobile posters sequentially (used by both mobile and desktop)
-      loadAllMobilePosters(movieList);
+      const loadedData = await loadAllMobilePosters(movieList);
+      await applyStreamingFilter(movieList, loadedData, inputMovies);
     } catch (err) {
       const error = err as AxiosError<{ error: string }>;
       const errorMessage = error.response?.data?.error || 'Failed to get recommendations. Please try again.';
@@ -136,17 +192,21 @@ export default function Home() {
       // Parse input movies and combine with previous recommendations for exclusion
       const inputMovies = parseInputMovies(movies);
       const allExcludedMovies = [...new Set([...inputMovies, ...previousMovies])]; // Remove duplicates
-      
-      const response = await axios.post<{ recommendations: string }>('/api/recommend', { 
-        movies, 
-        excludeMovies: allExcludedMovies 
+
+      const response = await axios.post<{ recommendations: string }>('/api/recommend', {
+        movies,
+        excludeMovies: allExcludedMovies,
+        services: selectedServices,
+        preferPopular,
+        useOriginalModel
       });
       setRecommendations(response.data.recommendations);
       const newMovieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
       setPreviousMovies(prev => [...prev, ...newMovieList]);
-      
+
       // Load new mobile posters sequentially (used by both mobile and desktop)
-      loadAllMobilePosters(newMovieList);
+      const loadedData = await loadAllMobilePosters(newMovieList);
+      await applyStreamingFilter(newMovieList, loadedData, allExcludedMovies);
     } catch (err) {
       const error = err as AxiosError<{ error: string }>;
       const errorMessage = error.response?.data?.error || 'Failed to get more recommendations. Please try again.';
@@ -205,49 +265,100 @@ export default function Home() {
     }
   };
 
-  const loadMobilePoster = async (movie: string) => {
+  const loadMobilePoster = async (movie: string): Promise<MovieDescription | null> => {
     if (mobilePosters[movie] || loadingMobilePosters[movie]) {
-      return;
+      return descriptions[movie] || null;
     }
 
     console.log(`Starting to load poster for: ${movie}`);
     setLoadingMobilePosters(prev => ({ ...prev, [movie]: true }));
-    
+
     try {
       const response = await axios.post<MovieDescription>('/api/description', { movieName: movie });
       console.log(`Got poster response for ${movie}:`, response.data.poster_path);
-      
+
       if (response.data.poster_path) {
         setMobilePosters(prev => ({ ...prev, [movie]: response.data.poster_path }));
       }
-      
+
       // Store full description data
       setDescriptions(prev => ({ ...prev, [movie]: response.data }));
-      
+
       // Extract and store rating
       const ratingMatch = response.data.description?.match(/⭐ Rating: ([\d.]+)\/10/);
       if (ratingMatch) {
         setMobileRatings(prev => ({ ...prev, [movie]: ratingMatch[1] }));
       }
+
+      return response.data;
     } catch (err) {
       console.error(`Failed to load poster for ${movie}:`, err);
+      return null;
     } finally {
       setLoadingMobilePosters(prev => ({ ...prev, [movie]: false }));
     }
   };
 
-  const loadAllMobilePosters = async (movies: string[]) => {
+  const loadAllMobilePosters = async (movies: string[]): Promise<Record<string, MovieDescription>> => {
     console.log(`Loading posters for ${movies.length} movies:`, movies);
+    const collected: Record<string, MovieDescription> = {};
     for (let i = 0; i < movies.length; i++) {
       const movie = movies[i];
       console.log(`Loading poster ${i + 1}/${movies.length}: ${movie}`);
-      await loadMobilePoster(movie);
+      const data = await loadMobilePoster(movie);
+      if (data) collected[movie] = data;
       // Wait 200ms between each request
       if (i < movies.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
     console.log('Finished loading all mobile posters');
+    return collected;
+  };
+
+  // When a streaming-service filter is active, replace any of the newly shown
+  // movies that don't match a selected service with a verified alternative.
+  const applyStreamingFilter = async (
+    shownMovies: string[],
+    loadedData: Record<string, MovieDescription>,
+    excludeSoFar: string[]
+  ) => {
+    if (selectedServices.length === 0) return;
+
+    const misses = shownMovies.filter(movie => !movieMatchesServices(loadedData[movie]?.streaming, selectedServices));
+    if (misses.length === 0) return;
+
+    const keepers = shownMovies.filter(movie => !misses.includes(movie));
+    const genreHints = Array.from(new Set(keepers.flatMap(movie => loadedData[movie]?.genres || []))).slice(0, 4);
+
+    setIsFilteringResults(true);
+    try {
+      const response = await axios.post<{ recommendations: string }>('/api/recommend/backfill', {
+        movies,
+        excludeMovies: Array.from(new Set([...excludeSoFar, ...shownMovies])),
+        services: selectedServices,
+        genres: genreHints,
+        count: misses.length,
+        preferPopular,
+        useOriginalModel
+      });
+
+      const replacements = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
+      if (replacements.length === 0) return;
+
+      const map: Record<string, string> = {};
+      misses.forEach((missedMovie, idx) => {
+        if (replacements[idx]) map[missedMovie] = replacements[idx];
+      });
+
+      setReplacedMovies(prev => ({ ...prev, ...map }));
+      setPreviousMovies(prev => [...prev, ...replacements]);
+      await loadAllMobilePosters(replacements);
+    } catch (err) {
+      console.error('Streaming filter backfill failed:', err);
+    } finally {
+      setIsFilteringResults(false);
+    }
   };
 
 
@@ -304,7 +415,128 @@ export default function Home() {
       });
   };
 
-  const recommendationList = parseRecommendations(recommendations);
+  // Applied after backfill replacements are merged in, so it catches sequel
+  // collisions regardless of whether they came from the AI's initial picks or a replacement.
+  const mergedRecommendationList = parseRecommendations(recommendations).map(movie => replacedMovies[movie] || movie);
+  const recommendationList = mergedRecommendationList.filter((movie, idx) =>
+    !mergedRecommendationList.slice(0, idx).some(earlier => isLikelySequelPair(earlier, movie))
+  );
+
+  // Small filter button + popover, reused next to every "get recommendations" button
+  const FilterButton = ({ compact = false }: { compact?: boolean }) => (
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setShowFilterMenu(v => !v)}
+        aria-label="Filter by streaming service"
+        style={{
+          backgroundColor: (selectedServices.length > 0 || preferPopular || useOriginalModel) ? '#8b5cf6' : 'rgba(255, 255, 255, 0.1)',
+          color: '#ffffff',
+          border: 'none',
+          borderRadius: compact ? '12px' : '50%',
+          width: compact ? '52px' : '56px',
+          height: compact ? '52px' : '56px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          position: 'relative'
+        }}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4" />
+        </svg>
+        {(selectedServices.length + (preferPopular ? 1 : 0) + (useOriginalModel ? 1 : 0)) > 0 && (
+          <span style={{
+            position: 'absolute',
+            top: '-4px',
+            right: '-4px',
+            backgroundColor: '#f59e0b',
+            color: '#000',
+            fontSize: '10px',
+            fontWeight: 700,
+            borderRadius: '999px',
+            minWidth: '16px',
+            height: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 3px'
+          }}>
+            {selectedServices.length + (preferPopular ? 1 : 0) + (useOriginalModel ? 1 : 0)}
+          </span>
+        )}
+      </button>
+      {showFilterMenu && (
+        <>
+          <div
+            onClick={() => setShowFilterMenu(false)}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }}
+          />
+          <div style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            right: 0,
+            backgroundColor: '#181818',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            borderRadius: '12px',
+            padding: '12px',
+            width: '220px',
+            zIndex: 50,
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)'
+          }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af', marginBottom: '8px' }}>
+              Filter by streaming service
+            </div>
+            {STREAMING_PROVIDERS.map(p => (
+              <label key={p.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 4px', fontSize: '14px', color: '#ffffff', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={selectedServices.includes(p.name)}
+                  onChange={() => toggleService(p.name)}
+                  style={{ accentColor: '#8b5cf6', width: '16px', height: '16px' }}
+                />
+                {p.name}
+              </label>
+            ))}
+            <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', margin: '8px 0' }} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 4px', fontSize: '14px', color: '#ffffff', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={preferPopular}
+                onChange={() => setPreferPopular(v => !v)}
+                style={{ accentColor: '#8b5cf6', width: '16px', height: '16px' }}
+              />
+              Prefer well-known movies
+            </label>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '6px 4px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={useOriginalModel}
+                onChange={() => setUseOriginalModel(v => !v)}
+                style={{ accentColor: '#8b5cf6', width: '16px', height: '16px', marginTop: '2px' }}
+              />
+              <span>
+                <span style={{ fontSize: '14px', color: '#ffffff', display: 'block' }}>Original Model</span>
+                <span style={{ fontSize: '11px', color: '#9ca3af', display: 'block', lineHeight: '1.4' }}>
+                  Slightly less exact genre blending. Good output even with bad input.
+                </span>
+              </span>
+            </label>
+            {(selectedServices.length > 0 || preferPopular || useOriginalModel) && (
+              <button
+                type="button"
+                onClick={() => { setSelectedServices([]); setPreferPopular(false); setUseOriginalModel(false); }}
+                style={{ marginTop: '8px', background: 'none', border: 'none', color: '#8b5cf6', fontSize: '13px', cursor: 'pointer', padding: 0 }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   // Show loading state while detecting device type to prevent flashing
   if (isMobile === null) {
@@ -421,23 +653,27 @@ export default function Home() {
                         boxSizing: 'border-box'
                       }}
                     />
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      style={{
-                        backgroundColor: '#8b5cf6',
-                        color: '#ffffff',
-                        padding: '16px',
-                        borderRadius: '12px',
-                        border: 'none',
-                        fontSize: '16px',
-                        fontWeight: '600',
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
-                        opacity: isLoading ? 0.7 : 1
-                      }}
-                    >
-                      {isLoading ? 'Finding Perfect Matches...' : 'Get Movie Recommendations'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        style={{
+                          flex: 1,
+                          backgroundColor: '#8b5cf6',
+                          color: '#ffffff',
+                          padding: '16px',
+                          borderRadius: '12px',
+                          border: 'none',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          cursor: isLoading ? 'not-allowed' : 'pointer',
+                          opacity: isLoading ? 0.7 : 1
+                        }}
+                      >
+                        {isLoading ? 'Finding Movies...' : 'Get Movies'}
+                      </button>
+                      <FilterButton compact />
+                    </div>
                   </form>
                 </div>
               </>
@@ -656,23 +892,27 @@ export default function Home() {
                     boxSizing: 'border-box'
                   }}
                 />
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  style={{
-                    backgroundColor: '#8b5cf6',
-                    color: '#ffffff',
-                    padding: '16px',
-                    borderRadius: '12px',
-                    border: 'none',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    cursor: isLoading ? 'not-allowed' : 'pointer',
-                    opacity: isLoading ? 0.7 : 1
-                  }}
-                >
-                  {isLoading ? 'Finding Perfect Matches...' : 'Get Movie Recommendations'}
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#8b5cf6',
+                      color: '#ffffff',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: 'none',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      opacity: isLoading ? 0.7 : 1
+                    }}
+                  >
+                    {isLoading ? 'Finding Movies...' : 'Get Movies'}
+                  </button>
+                  <FilterButton compact />
+                </div>
               </form>
             </div>
             
@@ -680,6 +920,11 @@ export default function Home() {
               <span style={{ fontSize: '20px' }}>⭐</span>
               <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>Recommended For You</h2>
             </div>
+            {isFilteringResults && (
+              <p style={{ fontSize: '13px', color: '#a78bfa', margin: '0 0 12px 0' }}>
+                Matching results to your streaming services...
+              </p>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {recommendationList.map((movie, index) => (
                 <div
@@ -771,7 +1016,7 @@ export default function Home() {
                         ⭐ {mobileRatings[movie] || (loadingMobilePosters[movie] ? 'Loading...' : 'N/A')}
                       </div>
                     </div>
-                    
+
                     {showingDetails[movie] && (
                       <div style={{ 
                         marginTop: '16px', 
@@ -1318,7 +1563,7 @@ export default function Home() {
               />
             </div>
             
-            <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
               <button
                 type="submit"
                 disabled={isLoading}
@@ -1353,6 +1598,7 @@ export default function Home() {
               >
                 {isLoading ? 'Finding Movies...' : 'Get Movies'}
               </button>
+              <FilterButton />
             </div>
           </form>
         </div>
@@ -1383,14 +1629,21 @@ export default function Home() {
               maxWidth: '1400px',
               margin: '0 auto 40px auto'
             }}>
-              <h2 style={{ 
-                fontSize: '32px', 
-                fontWeight: 'bold', 
-                color: '#ffffff',
-                margin: 0
-              }}>
-                Recommendations
-              </h2>
+              <div>
+                <h2 style={{
+                  fontSize: '32px',
+                  fontWeight: 'bold',
+                  color: '#ffffff',
+                  margin: 0
+                }}>
+                  Recommendations
+                </h2>
+                {isFilteringResults && (
+                  <p style={{ fontSize: '13px', color: '#a78bfa', margin: '4px 0 0 0' }}>
+                    Matching results to your streaming services...
+                  </p>
+                )}
+              </div>
               <button
                 onClick={handleGetMoreMovies}
                 disabled={isLoadingMore}
@@ -1521,10 +1774,11 @@ export default function Home() {
                       marginBottom: '8px'
                     }}>
                       {movie.match(/\((\d{4})\)/) ? movie.match(/\((\d{4})\)/)![1] : ''}
-                      {movie.includes(' - ') && (
-                        <span style={{ marginLeft: '8px' }}>
-                          • {movie.split(' - ')[1]}
-                        </span>
+                      {movie.includes(' - ') && movie.split(' - ')[1].trim() && (
+                        <>
+                          <span style={{ margin: '0 6px' }}>•</span>
+                          {movie.split(' - ')[1].trim()}
+                        </>
                       )}
                     </div>
                   </div>

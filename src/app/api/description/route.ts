@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
+import { rankTmdbCandidates } from '@/app/lib/movieMatching';
 
 // Helper function to extract the movie title from our format "Title (Year) - Director"
 const extractMovieInfo = (movieString: string) => {
@@ -48,16 +49,6 @@ interface TMDBError {
     data?: unknown;
     status?: number;
   };
-}
-
-interface TMDBSearchResult {
-  id: number;
-  title: string;
-  release_date: string;
-  vote_count: number;
-  vote_average: number;
-  popularity: number;
-  poster_path: string | null;
 }
 
 export async function POST(request: Request) {
@@ -131,33 +122,9 @@ export async function POST(request: Request) {
       searchResponse.data.results = broadSearchResponse.data.results;
     }
 
-    // Sort results with priority: exact title+year match > exact title match > popularity
-    const sortedResults = searchResponse.data.results.sort((a: TMDBSearchResult, b: TMDBSearchResult) => {
-      // Check for exact title match (case insensitive)
-      const exactTitleA = a.title.toLowerCase() === title.toLowerCase() ? 1 : 0;
-      const exactTitleB = b.title.toLowerCase() === title.toLowerCase() ? 1 : 0;
-      
-      // Check for exact year match if year is provided
-      let exactYearA = 0;
-      let exactYearB = 0;
-      if (year) {
-        const yearA = new Date(a.release_date).getFullYear().toString();
-        const yearB = new Date(b.release_date).getFullYear().toString();
-        exactYearA = yearA === year ? 1 : 0;
-        exactYearB = yearB === year ? 1 : 0;
-      }
-      
-      // Calculate combined match score (title + year)
-      const combinedScoreA = exactTitleA * 2 + exactYearA;
-      const combinedScoreB = exactTitleB * 2 + exactYearB;
-      
-      // If combined scores are different, prioritize higher score
-      if (combinedScoreA !== combinedScoreB) {
-        return combinedScoreB - combinedScoreA;
-      }
-      
-      return (b.popularity || 0) - (a.popularity || 0);
-    });
+    // Rank by popularity, with exact title/year matches acting as a boost rather
+    // than an absolute override (see rankTmdbCandidates for why that matters).
+    const sortedResults = rankTmdbCandidates(searchResponse.data.results, title, year);
     
     // Get the most popular result
     const movieData = sortedResults[0];
@@ -184,24 +151,26 @@ export async function POST(request: Request) {
       .map((actor: { name: string }) => actor.name)
       .join(', ');
 
-    // Format streaming providers if available
-    let streamingInfo = '';
-    if (movie_data['watch/providers']?.results?.US?.flatrate) {
-      const providers = movie_data['watch/providers'].results.US.flatrate
-        .slice(0, 3)
-        .map((provider: { provider_name: string }) => provider.provider_name)
-        .join(', ');
-      streamingInfo = `\n🎬 Movie Availability: ${providers}`;
-    } else {
-      streamingInfo = `\n🎬 Movie Availability: Check streaming platforms`;
-    }
+    // Structured streaming providers (used for the streaming-service filter)
+    const streamingProviders: string[] = movie_data['watch/providers']?.results?.US?.flatrate
+      ? movie_data['watch/providers'].results.US.flatrate.map((provider: { provider_name: string }) => provider.provider_name)
+      : [];
+
+    // Format streaming providers text for the mobile description
+    const streamingInfo = streamingProviders.length > 0
+      ? `\n🎬 Movie Availability: ${streamingProviders.slice(0, 3).join(', ')}`
+      : `\n🎬 Movie Availability: Check streaming platforms`;
+
+    const genreNames: string[] = movie_data.genres.map((g: { name: string }) => g.name);
 
     // Return comprehensive movie information with TMDB attribution
     return NextResponse.json({
       description: `${movie_data.overview}\n\n🎭 Cast: ${topCast}\n⭐ Rating: ${movie_data.vote_average.toFixed(1)}/10\n🎬 ${genres}\n⏱️ ${Math.floor(movie_data.runtime / 60)}h ${movie_data.runtime % 60}min${streamingInfo}\n\nClick image for more info`,
       poster_path: movie_data.poster_path ? `https://image.tmdb.org/t/p/w500${movie_data.poster_path}` : null,
       title: movie_data.title,
-      tmdb_url: `https://www.themoviedb.org/movie/${movie_data.id}`
+      tmdb_url: `https://www.themoviedb.org/movie/${movie_data.id}`,
+      streaming: streamingProviders,
+      genres: genreNames
     });
     
   } catch (error: unknown) {

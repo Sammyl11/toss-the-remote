@@ -1,5 +1,6 @@
 import { OpenAI } from 'openai';
 import { NextResponse } from 'next/server';
+import { isLikelySequelPair } from '@/app/lib/movieMatching';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { movies, excludeMovies = [] } = await request.json();
+    const { movies, excludeMovies = [], services = [], preferPopular = false, useOriginalModel = false } = await request.json();
     console.log('Received excludeMovies:', excludeMovies);
     if (!movies) {
       return NextResponse.json(
@@ -33,12 +34,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // The original gpt-4o-mini uses `max_tokens`; the newer gpt-5.4-nano requires
+    // `max_completion_tokens` instead — the API rejects the wrong one per model.
+    const model = useOriginalModel ? 'gpt-4o-mini' : 'gpt-5.4-nano';
+    const tokenLimitParam = useOriginalModel ? { max_tokens: 500 } : { max_completion_tokens: 500 };
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model,
       messages: [
         {
           role: "system",
-          content: "You are a movie recommendation expert. Format every response as exactly one movie per line: 'Title (Year) - Director'. Always include the year to distinguish movies with the same title."
+          content: "You are a movie recommendation expert. Format every response as exactly one movie per line: 'Title (Year) - Director'. Always include the year to distinguish movies with the same title. Never include two movies in the same response where one is a direct sequel or prequel of the other (e.g. don't include both 'Avatar' and 'Avatar: The Way of Water') — movies from the same franchise are fine as long as neither is a direct sequel/prequel of the other."
         },
         {
           role: "user",
@@ -47,34 +53,42 @@ export async function POST(request: Request) {
 Recommend 7 movies that match the genre mix, tone, intended audience, quality ratings, and time periods of the input movies. Consider the ratio of genres and include at least one movie that blends multiple genres from the input list.
 
 ${excludeMovies.length > 0 ? `Do not recommend any of these movies:\n${excludeMovies.join('\n')}` : ''}
+${services.length > 0 ? `When possible, prefer movies commonly available for streaming on: ${services.join(', ')}.` : ''}
+${preferPopular ? 'Favor well-known, broadly popular, mainstream movies over obscure or niche picks when the fit is comparable.' : ''}
 
 Return exactly 7 movies, one per line, no additional text.`
         }
       ],
       temperature: 0.7,
-      max_tokens: 500,
+      ...tokenLimitParam,
     });
 
-    // Server-side filtering as backup
-    let recommendations = completion.choices[0].message.content || '';
-    
-    if (excludeMovies.length > 0) {
-      const recommendationLines = recommendations.split('\n').filter(line => line.trim() !== '');
-      const filteredRecommendations = recommendationLines.filter(recommendation => {
-        // Extract title from recommendation format "Title (Year) - Director"
-        const titleMatch = recommendation.match(/^(.+?)\s*\(/);
-        const recTitle = titleMatch ? titleMatch[1].trim().toLowerCase() : recommendation.toLowerCase();
-        
-        // Check if this recommendation matches any excluded movie
-        return !excludeMovies.some((excludedMovie: string) => {
-          const excludedTitle = excludedMovie.split('(')[0].trim().toLowerCase();
-          return recTitle === excludedTitle;
-        });
+    // Server-side filtering as backup: drop exact excluded-title matches, and drop
+    // any movie that's a direct sequel/prequel of one already excluded or already
+    // kept earlier in this same batch (defense in depth on top of the prompt rule).
+    const recommendationLines = (completion.choices[0].message.content || '')
+      .split('\n')
+      .filter(line => line.trim() !== '');
+
+    const kept: string[] = [];
+    for (const recommendation of recommendationLines) {
+      const titleMatch = recommendation.match(/^(.+?)\s*\(/);
+      const recTitle = titleMatch ? titleMatch[1].trim().toLowerCase() : recommendation.toLowerCase();
+
+      const isExcluded = excludeMovies.some((excludedMovie: string) => {
+        const excludedTitle = excludedMovie.split('(')[0].trim().toLowerCase();
+        return recTitle === excludedTitle;
       });
-      
-      recommendations = filteredRecommendations.join('\n');
-      console.log('Filtered recommendations:', recommendations);
+      const clashesWithExcluded = excludeMovies.some((excludedMovie: string) => isLikelySequelPair(excludedMovie, recommendation));
+      const clashesWithKept = kept.some(k => isLikelySequelPair(k, recommendation));
+
+      if (!isExcluded && !clashesWithExcluded && !clashesWithKept) {
+        kept.push(recommendation);
+      }
     }
+
+    const recommendations = kept.join('\n');
+    console.log('Filtered recommendations:', recommendations);
 
     return NextResponse.json({
       recommendations

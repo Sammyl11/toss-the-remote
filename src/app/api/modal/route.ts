@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
+import { rankTmdbCandidates } from '@/app/lib/movieMatching';
 
 // Helper function to extract the movie title from our format "Title (Year) - Director"
 const extractMovieInfo = (movieString: string) => {
@@ -45,16 +46,6 @@ interface TMDBError {
     data?: unknown;
     status?: number;
   };
-}
-
-interface TMDBSearchResult {
-  id: number;
-  title: string;
-  release_date: string;
-  vote_count: number;
-  vote_average: number;
-  popularity: number;
-  poster_path: string | null;
 }
 
 export async function POST(request: Request) {
@@ -129,33 +120,9 @@ export async function POST(request: Request) {
       searchResponse.data.results = broadSearchResponse.data.results;
     }
 
-    // Sort results with priority: exact title+year match > exact title match > popularity
-    const sortedResults = searchResponse.data.results.sort((a: TMDBSearchResult, b: TMDBSearchResult) => {
-      // Check for exact title match (case insensitive)
-      const exactTitleA = a.title.toLowerCase() === title.toLowerCase() ? 1 : 0;
-      const exactTitleB = b.title.toLowerCase() === title.toLowerCase() ? 1 : 0;
-      
-      // Check for exact year match if year is provided
-      let exactYearA = 0;
-      let exactYearB = 0;
-      if (year) {
-        const yearA = new Date(a.release_date).getFullYear().toString();
-        const yearB = new Date(b.release_date).getFullYear().toString();
-        exactYearA = yearA === year ? 1 : 0;
-        exactYearB = yearB === year ? 1 : 0;
-      }
-      
-      // Calculate combined match score (title + year)
-      const combinedScoreA = exactTitleA * 2 + exactYearA;
-      const combinedScoreB = exactTitleB * 2 + exactYearB;
-      
-      // If combined scores are different, prioritize higher score
-      if (combinedScoreA !== combinedScoreB) {
-        return combinedScoreB - combinedScoreA;
-      }
-      
-      return (b.popularity || 0) - (a.popularity || 0);
-    });
+    // Rank by popularity, with exact title/year matches acting as a boost rather
+    // than an absolute override (see rankTmdbCandidates for why that matters).
+    const sortedResults = rankTmdbCandidates(searchResponse.data.results, title, year);
     
     // Get the most popular result
     const movieData = sortedResults[0];
