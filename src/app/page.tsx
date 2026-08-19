@@ -165,13 +165,17 @@ export default function Home() {
         preferPopular,
         useOriginalModel
       });
-      setRecommendations(response.data.recommendations);
       const movieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
-      setPreviousMovies([...inputMovies, ...movieList]);
 
-      // Load mobile posters sequentially (used by both mobile and desktop)
+      // Load posters and resolve any streaming-service mismatches before revealing
+      // anything, so the list appears once already filtered instead of flashing
+      // the unfiltered picks first.
       const loadedData = await loadAllMobilePosters(movieList);
-      await applyStreamingFilter(movieList, loadedData, inputMovies);
+      const { replacedMap, replacementMovies } = await applyStreamingFilter(movieList, loadedData, inputMovies);
+
+      setRecommendations(response.data.recommendations);
+      setPreviousMovies([...inputMovies, ...movieList, ...replacementMovies]);
+      setReplacedMovies(replacedMap);
     } catch (err) {
       const error = err as AxiosError<{ error: string }>;
       const errorMessage = error.response?.data?.error || 'Failed to get recommendations. Please try again.';
@@ -200,13 +204,17 @@ export default function Home() {
         preferPopular,
         useOriginalModel
       });
-      setRecommendations(response.data.recommendations);
       const newMovieList = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
-      setPreviousMovies(prev => [...prev, ...newMovieList]);
 
-      // Load new mobile posters sequentially (used by both mobile and desktop)
+      // Load posters and resolve any streaming-service mismatches before revealing
+      // anything, so the list appears once already filtered instead of flashing
+      // the unfiltered picks first.
       const loadedData = await loadAllMobilePosters(newMovieList);
-      await applyStreamingFilter(newMovieList, loadedData, allExcludedMovies);
+      const { replacedMap, replacementMovies } = await applyStreamingFilter(newMovieList, loadedData, allExcludedMovies);
+
+      setRecommendations(response.data.recommendations);
+      setPreviousMovies(prev => [...prev, ...newMovieList, ...replacementMovies]);
+      setReplacedMovies(prev => ({ ...prev, ...replacedMap }));
     } catch (err) {
       const error = err as AxiosError<{ error: string }>;
       const errorMessage = error.response?.data?.error || 'Failed to get more recommendations. Please try again.';
@@ -316,17 +324,19 @@ export default function Home() {
     return collected;
   };
 
-  // When a streaming-service filter is active, replace any of the newly shown
-  // movies that don't match a selected service with a verified alternative.
+  // When a streaming-service filter is active, find a verified replacement for any of the
+  // newly shown movies that don't match a selected service. Returns the replacements instead
+  // of applying them directly, so the caller can reveal everything to the UI in one shot.
   const applyStreamingFilter = async (
     shownMovies: string[],
     loadedData: Record<string, MovieDescription>,
     excludeSoFar: string[]
-  ) => {
-    if (selectedServices.length === 0) return;
+  ): Promise<{ replacedMap: Record<string, string>; replacementMovies: string[] }> => {
+    const empty = { replacedMap: {}, replacementMovies: [] };
+    if (selectedServices.length === 0) return empty;
 
     const misses = shownMovies.filter(movie => !movieMatchesServices(loadedData[movie]?.streaming, selectedServices));
-    if (misses.length === 0) return;
+    if (misses.length === 0) return empty;
 
     const keepers = shownMovies.filter(movie => !misses.includes(movie));
     const genreHints = Array.from(new Set(keepers.flatMap(movie => loadedData[movie]?.genres || []))).slice(0, 4);
@@ -344,18 +354,18 @@ export default function Home() {
       });
 
       const replacements = response.data.recommendations.split('\n').filter(line => line.trim() !== '');
-      if (replacements.length === 0) return;
+      if (replacements.length === 0) return empty;
 
       const map: Record<string, string> = {};
       misses.forEach((missedMovie, idx) => {
         if (replacements[idx]) map[missedMovie] = replacements[idx];
       });
 
-      setReplacedMovies(prev => ({ ...prev, ...map }));
-      setPreviousMovies(prev => [...prev, ...replacements]);
       await loadAllMobilePosters(replacements);
+      return { replacedMap: map, replacementMovies: replacements };
     } catch (err) {
       console.error('Streaming filter backfill failed:', err);
+      return empty;
     } finally {
       setIsFilteringResults(false);
     }
@@ -1666,11 +1676,11 @@ export default function Home() {
 
             {/* Movie Cards Grid */}
             <div style={{
-              display: 'flex',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
               gap: '20px',
               marginBottom: '60px',
-              justifyContent: 'center',
-              maxWidth: '100%',
+              maxWidth: '1400px',
               margin: '0 auto 60px auto',
               padding: '12px 20px 0 20px'
             }}>
@@ -1685,9 +1695,7 @@ export default function Home() {
                     cursor: 'pointer',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     position: 'relative',
-                    flex: '1 1 0',
-                    minWidth: 0,
-                    width: 'calc((100% - 120px) / 7)'
+                    minWidth: 0
                   }}
                   onClick={() => {
                     fetchModalData(movie);
@@ -1697,23 +1705,33 @@ export default function Home() {
                     e.currentTarget.style.transform = 'translateY(-8px)';
                     e.currentTarget.style.boxShadow = '0 20px 40px rgba(139, 92, 246, 0.2)';
                     e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                    const overlay = e.currentTarget.querySelector<HTMLElement>('.movie-card-overlay');
+                    if (overlay) {
+                      overlay.style.transform = 'translateY(0)';
+                      overlay.style.opacity = '1';
+                    }
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = 'none';
                     e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                    const overlay = e.currentTarget.querySelector<HTMLElement>('.movie-card-overlay');
+                    if (overlay) {
+                      overlay.style.transform = 'translateY(100%)';
+                      overlay.style.opacity = '0';
+                    }
                   }}
                 >
                   {/* Movie Poster */}
-                  <div style={{ 
-                    width: '100%', 
+                  <div style={{
+                    width: '100%',
                     paddingBottom: '150%',
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     position: 'relative',
                     overflow: 'hidden'
                   }}>
                     {loadingMobilePosters[movie] ? (
-                      <div style={{ 
+                      <div style={{
                         position: 'absolute',
                         top: 0,
                         left: 0,
@@ -1730,14 +1748,14 @@ export default function Home() {
                         src={mobilePosters[movie]}
                         alt={movie.split(' (')[0]}
                         fill
-                        style={{ 
+                        style={{
                           borderRadius: '0',
                           objectFit: 'cover',
                           objectPosition: 'center top'
                         }}
                       />
                     ) : (
-                      <div style={{ 
+                      <div style={{
                         position: 'absolute',
                         top: 0,
                         left: 0,
@@ -1746,7 +1764,7 @@ export default function Home() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#9ca3af', 
+                        color: '#9ca3af',
                         fontSize: '14px',
                         textAlign: 'center',
                         padding: '20px'
@@ -1754,33 +1772,50 @@ export default function Home() {
                         {movie.split(' (')[0]}
                       </div>
                     )}
+
+                    {/* Hover overlay: year + director, revealed on hover so long names
+                        have the full poster height to wrap in without affecting card/row height */}
+                    <div
+                      className="movie-card-overlay"
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        padding: '20px 12px 12px',
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0) 100%)',
+                        transform: 'translateY(100%)',
+                        opacity: 0,
+                        transition: 'transform 0.25s ease, opacity 0.25s ease',
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      <div style={{ fontSize: '11px', color: '#d1d5db', marginBottom: '4px' }}>
+                        {movie.match(/\((\d{4})\)/) ? movie.match(/\((\d{4})\)/)![1] : ''}
+                      </div>
+                      {movie.includes(' - ') && movie.split(' - ')[1].trim() && (
+                        <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.4' }}>
+                          {movie.split(' - ')[1].trim()}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  
+
                   {/* Movie Info */}
-                  <div style={{ padding: '20px' }}>
-                    <h3 style={{ 
-                      fontSize: '12px', 
-                      fontWeight: '600', 
+                  <div style={{ padding: '14px 14px 16px' }}>
+                    <h3 style={{
+                      fontSize: '13px',
+                      fontWeight: '600',
                       color: '#ffffff',
-                      margin: '0 0 6px 0',
-                      lineHeight: '1.3'
+                      margin: 0,
+                      lineHeight: '1.35',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
                     }}>
                       {movie.split(' (')[0]}
                     </h3>
-                    
-                    <div style={{ 
-                      fontSize: '10px', 
-                      color: '#9ca3af',
-                      marginBottom: '8px'
-                    }}>
-                      {movie.match(/\((\d{4})\)/) ? movie.match(/\((\d{4})\)/)![1] : ''}
-                      {movie.includes(' - ') && movie.split(' - ')[1].trim() && (
-                        <>
-                          <span style={{ margin: '0 6px' }}>•</span>
-                          {movie.split(' - ')[1].trim()}
-                        </>
-                      )}
-                    </div>
                   </div>
                 </div>
               ))}
